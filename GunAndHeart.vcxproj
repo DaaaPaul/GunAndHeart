@@ -10,6 +10,15 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="headers\V_Context.h" />
+    <ClInclude Include="headers\V_Engine.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\V_Context.cpp" />
+    <ClCompile Include="src\V_Engine.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -85,35 +94,6 @@
       <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\V_Commands.cpp" />
-    <ClCompile Include="src\V_Engine.cpp" />
-    <ClCompile Include="src\V_Instance.cpp" />
-    <ClCompile Include="src\V_LogicalDevice.cpp" />
-    <ClCompile Include="src\V_PhysicalDevice.cpp" />
-    <ClCompile Include="src\V_Pipeline.cpp" />
-    <ClCompile Include="src\V_Queue.cpp" />
-    <ClCompile Include="src\V_Surface.cpp" />
-    <ClCompile Include="src\V_Swapchain.cpp" />
-    <ClCompile Include="src\V_Synchronization.cpp" />
-    <ClCompile Include="src\V_Verticies.cpp" />
-    <ClCompile Include="src\V_Window.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="headers\V_Commands.h" />
-    <ClInclude Include="headers\V_Engine.h" />
-    <ClInclude Include="headers\V_Instance.h" />
-    <ClInclude Include="headers\V_LogicalDevice.h" />
-    <ClInclude Include="headers\V_PhysicalDevice.h" />
-    <ClInclude Include="headers\V_Pipeline.h" />
-    <ClInclude Include="headers\V_Queue.h" />
-    <ClInclude Include="headers\V_Surface.h" />
-    <ClInclude Include="headers\V_Swapchain.h" />
-    <ClInclude Include="headers\V_Synchronization.h" />
-    <ClInclude Include="headers\V_Vertices.h" />
-    <ClInclude Include="headers\V_Window.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
