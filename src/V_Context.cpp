@@ -96,18 +96,16 @@ namespace Vulkan {
 	}
 
 	void Context::initPhysicalDevice(std::vector<const char*> const& devExts) {
-		std::vector<std::array<uint32_t, 4>> physicalDeviceProperties = enumeratePhysicalDeviceProperties(devExts);
+		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings = ratePhysicalDevices(devExts);
 
 		bool foundSuitablePhysicalDevice = false;
-		for(uint32_t i = 0; i < physicalDeviceProperties.size(); i++) {
-			std::cout << physicalDeviceProperties[i][0] << '\n';
-			std::cout << physicalDeviceProperties[i][1] << '\n';
-			std::cout << physicalDeviceProperties[i][2] << '\n';
-			std::cout << physicalDeviceProperties[i][3] << '\n';
+		for(uint32_t i = 0; i < physicalDeviceRatings.size(); i++) {
+			vk::raii::PhysicalDevice phyDev = instance.enumeratePhysicalDevices()[i];
+			std::cout << "Rating of " << phyDev.getProperties().deviceName << ": " << physicalDeviceRatings[i][0] << ' ' << physicalDeviceRatings[i][1] << ' ' << physicalDeviceRatings[i][2] << ' ' << physicalDeviceRatings[i][3] << '\n';
 
-			if (physicalDeviceProperties[i][0] && physicalDeviceProperties[i][1] && physicalDeviceProperties[i][2] && physicalDeviceProperties[i][3]) {
-				physicalDevice = instance.enumeratePhysicalDevices()[i];
+			if(judgePhysicalDevice(physicalDeviceRatings[i]) == 4) {
 				foundSuitablePhysicalDevice = true;
+				physicalDevice = phyDev;
 				break;
 			}
 		}
@@ -120,7 +118,7 @@ namespace Vulkan {
 	}
 
 	void Context::initDevice() {
-	
+		
 	}
 
 	std::pair<uint32_t, const char**> Context::enumerateGlfwExtensions() {
@@ -160,8 +158,8 @@ namespace Vulkan {
 		return haveGlfwExtensions;
 	}
 
-	std::vector<std::array<uint32_t, 4>> Context::enumeratePhysicalDeviceProperties(std::vector<const char*> const& devExts) {
-		std::vector<std::array<uint32_t, 4>> physicalDeviceProperties{};
+	std::vector<std::array<uint32_t, 4>> Context::ratePhysicalDevices(std::vector<const char*> const& devExts) {
+		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings{};
 		std::vector<vk::raii::PhysicalDevice> physicalDevices = instance.enumeratePhysicalDevices();
 
 		for(vk::raii::PhysicalDevice const& phyDev : physicalDevices) {
@@ -183,10 +181,20 @@ namespace Vulkan {
 				propertyChecklist[3] = 1;
 			}
 
-			physicalDeviceProperties.push_back(propertyChecklist);
+			physicalDeviceRatings.push_back(propertyChecklist);
 		}
 
-		return physicalDeviceProperties;
+		return physicalDeviceRatings;
+	}
+
+	uint32_t Context::judgePhysicalDevice(std::array<uint32_t, 4> rating) {
+		uint32_t judgement = 0;
+
+		for(uint32_t const& value : rating) {
+			judgement += value;
+		}
+
+		return judgement;
 	}
 
 	bool Context::hasMinimumApiVersion(vk::raii::PhysicalDevice const& phyDev, int const& apiVersion) {
@@ -211,28 +219,32 @@ namespace Vulkan {
 	bool Context::hasPhysicalDeviceFeatures(vk::raii::PhysicalDevice const& phyDev, vk::StructureChain<Ts...> const& features) {
 		vk::StructureChain<Ts...> availableFeatures = phyDev.getFeatures2<Ts...>();
 
-		return (... && isFeaturesBundleSupported(features.get<Ts>(), availableFeatures.get<Ts>()));
+		return (... && featureBundleSupported(features.get<Ts>(), availableFeatures.get<Ts>()));
 	}
 
 	template <class T>
-	bool Context::isFeaturesBundleSupported(T const& requested, T const& supported) {
-		size_t offset = offsetof(T, pNext) + sizeof(void*);
+	bool Context::featureBundleSupported(T const& required, T const& available) {
+		bool result = true;
 
-		char const* reqBytes = reinterpret_cast<char const*>(&requested) + offset;
-		char const* supBytes = reinterpret_cast<char const*>(&supported) + offset;
+		size_t boolOffset = offsetof(T, pNext) + sizeof(void*);
+		size_t dataSize = sizeof(T) - boolOffset;
 
-		size_t dataSize = sizeof(T) - offset;
+		char const* requiredBoolOffset = reinterpret_cast<char const*>(&required) + boolOffset;
+		char const* availableBoolOffset = reinterpret_cast<char const*>(&available) + boolOffset;
 
-		for (size_t i = 0; i < dataSize; i += sizeof(VkBool32)) {
-			VkBool32 reqVal = *reinterpret_cast<VkBool32 const*>(reqBytes + i);
-			VkBool32 supVal = *reinterpret_cast<VkBool32 const*>(supBytes + i);
+		for (uint32_t i = 0; i < dataSize; i += sizeof(VkBool32)) {
+			const VkBool32 required = *reinterpret_cast<VkBool32 const*>(requiredBoolOffset + i);
+			const VkBool32 available = *reinterpret_cast<VkBool32 const*>(availableBoolOffset + i);
 
-			if ((supVal & reqVal) != reqVal) {
-				return false;
+			if (required == VK_TRUE && available == VK_FALSE) {
+				result = false;
+				break;
+			} else if (required == VK_TRUE && available == VK_TRUE) {
+				std::cout << "Required device feature supported: " << typeid(T).name() << " at location " << boolOffset + i << '\n';
 			}
 		}
-
-		return true;
+		
+		return result;
 	}
 
 	bool Context::hasPhysicalDeviceExtensions(vk::raii::PhysicalDevice const& phyDev, std::vector<const char*> const& extensions) {

@@ -56,13 +56,14 @@ namespace Vulkan {
 		std::pair<uint32_t, const char**> enumerateGlfwExtensions();
 		bool verifyHaveGlfwExtensions(uint32_t const& needCount, const char**& needs);
 
-		std::vector<std::array<uint32_t, 4>> enumeratePhysicalDeviceProperties(std::vector<const char*> const& devExts);
+		std::vector<std::array<uint32_t, 4>> ratePhysicalDevices(std::vector<const char*> const& devExts);
+		uint32_t judgePhysicalDevice(std::array<uint32_t, 4> rating);
 		bool hasMinimumApiVersion(vk::raii::PhysicalDevice const& phyDev, int const& apiVersion);
 		bool hasQueueFamily(vk::raii::PhysicalDevice const& phyDev, vk::QueueFlagBits const& familyBits);
 		template <class... Ts>
 		bool hasPhysicalDeviceFeatures(vk::raii::PhysicalDevice const& phyDev, vk::StructureChain<Ts...> const& features);
 		template <class T>
-		bool isFeaturesBundleSupported(T const& requested, T const& supported);
+		bool featureBundleSupported(T const& requested, T const& supported);
 		bool hasPhysicalDeviceExtensions(vk::raii::PhysicalDevice const& phyDev, std::vector<const char*> const& extensions);
 
 	public:
