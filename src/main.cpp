@@ -9,6 +9,7 @@ int main() {
 			.windowWidth = 800,
 			.windowHeight = 800,
 			.appName = "GunAndHeart",
+			.apiVersion = 1.3,
 			.validationLayers = {"VK_LAYER_KHRONOS_validation"},
 			.deviceExtensions = {
 				vk::KHRSwapchainExtensionName,

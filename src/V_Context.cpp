@@ -1,5 +1,6 @@
 #include "V_Context.h"
 #include <cstddef>
+#include <limits>
 
 namespace Vulkan {
 	Context::Context() : 
@@ -16,8 +17,8 @@ namespace Vulkan {
 		windowName{ nullptr },
 		VALIDATION_LAYERS{},
 		DEVICE_EXTENSIONS{},
-		deviceFeatures{ {}, {}, {}, {} },
-		self{ *this } {
+		deviceFeatures{ {}, {}, {}, {} }
+	{
 
 		deviceFeatures.get<vk::PhysicalDeviceVulkan11Features>().shaderDrawParameters = true;
 		deviceFeatures.get<vk::PhysicalDeviceVulkan13Features>().synchronization2 = true;
@@ -45,9 +46,9 @@ namespace Vulkan {
 		}
 
 		initWindow(initInfo.windowWidth, initInfo.windowHeight, initInfo.appName);
-		initInstance(initInfo.validationLayers);
+		initInstance(initInfo.apiVersion, initInfo.validationLayers);
 		initSurface();
-		initPhysicalDevice(initInfo.deviceExtensions);
+		initPhysicalDevice(initInfo.apiVersion, initInfo.deviceExtensions);
 		initDevice();
 	}
 
@@ -63,9 +64,9 @@ namespace Vulkan {
 		}
 	}
 
-	void Context::initInstance(const std::vector<const char*>& VALIDATION) {
+	void Context::initInstance(double const& apiVersion, const std::vector<const char*>& VALIDATION) {
 		vk::ApplicationInfo appInfo = {
-			.apiVersion = vk::ApiVersion14
+			.apiVersion = doubleApiVersionToVkApiVersion(apiVersion)
 		};
 
 		std::pair<uint32_t, const char**> glfwExtensionInfo = enumerateGlfwExtensions();
@@ -95,8 +96,8 @@ namespace Vulkan {
 		std::cout << "Surface creation successful\n";
 	}
 
-	void Context::initPhysicalDevice(std::vector<const char*> const& devExts) {
-		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings = ratePhysicalDevices(devExts);
+	void Context::initPhysicalDevice(double const& apiVersion, std::vector<const char*> const& devExts) {
+		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings = ratePhysicalDevices(apiVersion, devExts);
 
 		bool foundSuitablePhysicalDevice = false;
 		for(uint32_t i = 0; i < physicalDeviceRatings.size(); i++) {
@@ -118,7 +119,26 @@ namespace Vulkan {
 	}
 
 	void Context::initDevice() {
-		
+		uint32_t graphicsQueueFamilyIndex = queueFamilyIndex(physicalDevice, surface, vk::QueueFlagBits::eGraphics);
+		float arbitraryPriority = 0.5f;
+		vk::DeviceQueueCreateInfo graphicsFamilyInfo = {
+			.queueFamilyIndex = graphicsQueueFamilyIndex,
+			.queueCount = 1,
+			.pQueuePriorities = &arbitraryPriority
+		};
+
+		vk::DeviceCreateInfo deviceInfo = {
+			.pNext = &deviceFeatures.get<vk::PhysicalDeviceFeatures2>(),
+			.queueCreateInfoCount = 1,
+			.pQueueCreateInfos = &graphicsFamilyInfo,
+			.enabledExtensionCount = static_cast<uint32_t>(DEVICE_EXTENSIONS.size()),
+			.ppEnabledExtensionNames = DEVICE_EXTENSIONS.data()
+		};
+
+		device = vk::raii::Device(physicalDevice, deviceInfo);
+		graphicsQueue = vk::raii::Queue(device, graphicsQueueFamilyIndex, 0);
+
+		std::cout << "Device creation successful\n";
 	}
 
 	std::pair<uint32_t, const char**> Context::enumerateGlfwExtensions() {
@@ -158,14 +178,14 @@ namespace Vulkan {
 		return haveGlfwExtensions;
 	}
 
-	std::vector<std::array<uint32_t, 4>> Context::ratePhysicalDevices(std::vector<const char*> const& devExts) {
+	std::vector<std::array<uint32_t, 4>> Context::ratePhysicalDevices(double const& apiVersion, std::vector<const char*> const& devExts) {
 		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings{};
 		std::vector<vk::raii::PhysicalDevice> physicalDevices = instance.enumeratePhysicalDevices();
 
 		for(vk::raii::PhysicalDevice const& phyDev : physicalDevices) {
 			std::array<uint32_t, 4> propertyChecklist = { 0, 0, 0, 0 };
 
-			if(hasMinimumApiVersion(phyDev, VK_VERSION_1_3)) {
+			if(hasMinimumApiVersion(phyDev, doubleApiVersionToVkApiVersion(apiVersion))) {
 				propertyChecklist[0] = 1;
 			}
 
@@ -173,11 +193,11 @@ namespace Vulkan {
 				propertyChecklist[1] = 1;
 			}
 
-			if(hasPhysicalDeviceFeatures(phyDev, deviceFeatures)) {
+			if (hasPhysicalDeviceExtensions(phyDev, devExts)) {
 				propertyChecklist[2] = 1;
 			}
 
-			if(hasPhysicalDeviceExtensions(phyDev, devExts)) {
+			if(hasPhysicalDeviceFeatures(phyDev, deviceFeatures)) {
 				propertyChecklist[3] = 1;
 			}
 
@@ -197,8 +217,8 @@ namespace Vulkan {
 		return judgement;
 	}
 
-	bool Context::hasMinimumApiVersion(vk::raii::PhysicalDevice const& phyDev, int const& apiVersion) {
-		return phyDev.getProperties().apiVersion >= static_cast<uint32_t>(apiVersion);
+	bool Context::hasMinimumApiVersion(vk::raii::PhysicalDevice const& phyDev, uint32_t const& apiVersion) {
+		return phyDev.getProperties().apiVersion >= apiVersion;
 	}
 
 	bool Context::hasQueueFamily(vk::raii::PhysicalDevice const& phyDev, vk::QueueFlagBits const& familyBit) {
@@ -269,5 +289,19 @@ namespace Vulkan {
 		}
 
 		return foundAllExtensions;
+	}
+
+	uint32_t Context::queueFamilyIndex(vk::raii::PhysicalDevice const& phyDev, vk::raii::SurfaceKHR const& surf, vk::QueueFlagBits const& familyBits) {
+		uint32_t familyIndex = std::numeric_limits<uint32_t>::max();
+		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = phyDev.getQueueFamilyProperties();
+
+		for(uint32_t i = 0; i < queueFamilyProperties.size(); i++) {
+			if ((queueFamilyProperties[i].queueFlags & familyBits) && (phyDev.getSurfaceSupportKHR(i, surf))) {
+				familyIndex = i;
+				break;
+			}
+		}
+
+		return familyIndex;
 	}
 }

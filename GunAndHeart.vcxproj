@@ -19,6 +19,9 @@
     <ClCompile Include="src\V_Context.cpp" />
     <ClCompile Include="src\V_Engine.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="TODO.txt" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
