@@ -14,6 +14,7 @@ namespace Vulkan {
 		int windowHeight = 0;
 		const char* appName = nullptr;
 		std::vector<const char*> validationLayers{};
+		std::vector<const char*> deviceExtensions{};
 	};
 
 	class Context {
@@ -40,15 +41,29 @@ namespace Vulkan {
 		const char* windowName;
 
 		const std::vector<const char*> VALIDATION_LAYERS;
+		const std::vector<const char*> DEVICE_EXTENSIONS;
+		vk::StructureChain<vk::PhysicalDeviceFeatures2,
+			vk::PhysicalDeviceVulkan11Features,
+			vk::PhysicalDeviceVulkan13Features,
+			vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> deviceFeatures;
 
 		void initWindow(int const& WIDTH, int const& HEIGHT, const char* name);
 		void initInstance(const std::vector<const char*>& VALIDATION);
 		void initSurface();
-		void initPhysicalDevice();
+		void initPhysicalDevice(std::vector<const char*> const& devExts);
 		void initDevice();
 
 		std::pair<uint32_t, const char**> enumerateGlfwExtensions();
 		bool verifyHaveGlfwExtensions(uint32_t const& needCount, const char**& needs);
+
+		std::vector<std::array<uint32_t, 4>> enumeratePhysicalDeviceProperties(std::vector<const char*> const& devExts);
+		bool hasMinimumApiVersion(vk::raii::PhysicalDevice const& phyDev, int const& apiVersion);
+		bool hasQueueFamily(vk::raii::PhysicalDevice const& phyDev, vk::QueueFlagBits const& familyBits);
+		template <class... Ts>
+		bool hasPhysicalDeviceFeatures(vk::raii::PhysicalDevice const& phyDev, vk::StructureChain<Ts...> const& features);
+		template <class T>
+		bool isFeaturesBundleSupported(T const& requested, T const& supported);
+		bool hasPhysicalDeviceExtensions(vk::raii::PhysicalDevice const& phyDev, std::vector<const char*> const& extensions);
 
 	public:
 		Context& self;

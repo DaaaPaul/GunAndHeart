@@ -10,6 +10,12 @@ int main() {
 			.windowHeight = 800,
 			.appName = "GunAndHeart",
 			.validationLayers = {"VK_LAYER_KHRONOS_validation"},
+			.deviceExtensions = {
+				vk::KHRSwapchainExtensionName,
+				vk::KHRSpirv14ExtensionName,
+				vk::KHRSynchronization2ExtensionName,
+				vk::KHRCreateRenderpass2ExtensionName
+			}
 		};
 
 		context.init(contextInfo);
