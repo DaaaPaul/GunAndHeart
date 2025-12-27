@@ -5,11 +5,15 @@
 int main() {
 	try {
 		Vulkan::Context& context = Vulkan::Context::get();
-		Vulkan::ContextInitInfo contextInfo = {
+
+		Vulkan::ContextInitInfo<vk::PhysicalDeviceFeatures2,
+		vk::PhysicalDeviceVulkan11Features,
+		vk::PhysicalDeviceVulkan13Features,
+		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> contextInfo = {
 			.windowWidth = 800,
 			.windowHeight = 800,
 			.appName = "GunAndHeart",
-			.apiVersion = 1.3,
+			.apiVersion = vk::ApiVersion13,
 			.validationLayers = {"VK_LAYER_KHRONOS_validation"},
 			.deviceExtensions = {
 				vk::KHRSwapchainExtensionName,
@@ -28,7 +32,7 @@ int main() {
 					{.extendedDynamicState = true }
 				},
 			.queueFamilies = {
-				{vk::QueueFlagBits::eGraphics, 1, 0.5f}
+				{vk::QueueFlagBits::eGraphics, 1, {0.5f}}
 			}
 		};
 

@@ -9,23 +9,17 @@
 #include <utility>
 #include <tuple>
 
-#define doubleApiVersionToVkApiVersion(d) \
-	((d) == 1.1 ? vk::ApiVersion11 : \
-     (d) == 1.2 ? vk::ApiVersion12 : \
-     (d) == 1.3 ? vk::ApiVersion13 : \
-     (d) == 1.4 ? vk::ApiVersion14 : vk::ApiVersion10)
-
 namespace Vulkan {
 	template <class... Ts>
 	struct ContextInitInfo {
 		int windowWidth = 0;
 		int windowHeight = 0;
 		const char* appName = nullptr;
-		double apiVersion = 0.0;
+		uint32_t apiVersion = 0;
 		std::vector<const char*> validationLayers{};
 		std::vector<const char*> deviceExtensions{};
 		vk::StructureChain<Ts...> deviceFeatures{};
-		std::vector<std::tuple<vk::QueueFlagBits, uint32_t, float>> queueFamilies{};
+		std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> queueFamilies{};
 	};
 
 	class Context {
@@ -48,21 +42,21 @@ namespace Vulkan {
 		std::vector<std::vector<vk::raii::Queue>> queues;
 
 		void initWindow(int const& WIDTH, int const& HEIGHT, const char* name);
-		void initInstance(double const& apiVersion, const std::vector<const char*>& validLays);
+		void initInstance(uint32_t const& apiVersion, const std::vector<const char*>& validLays);
 		void initSurface();
 		template <class... Ts>
-		void initPhysicalDevice(double const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, float>> const& queuesInfo);
+		void initPhysicalDevice(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
 		template <class... Ts>
-		void initDevice(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, float>> const& queuesInfo);
+		void initDevice(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
 
 		std::pair<uint32_t, const char**> enumerateGlfwExtensions();
 		bool verifyHaveGlfwExtensions(uint32_t const& needCount, const char**& needs);
 
 		template <class... Ts>
-		std::vector<std::array<uint32_t, 4>> ratePhysicalDevices(double const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, float>> const& queuesInfo);
+		std::vector<std::array<uint32_t, 4>> ratePhysicalDevices(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
 		uint32_t judgePhysicalDevice(std::array<uint32_t, 4> rating);
 		bool hasMinimumApiVersion(vk::raii::PhysicalDevice const& phyDev, uint32_t const& apiVersion);
-		bool hasQueueFamily(vk::raii::PhysicalDevice const& phyDev, vk::QueueFlagBits const& familyBits);
+		bool hasQueueFamilyQueues(vk::raii::PhysicalDevice const& phyDev, vk::QueueFlagBits const& familyBits, uint32_t const& queueCount);
 		template <class... Ts>
 		bool hasPhysicalDeviceFeatures(vk::raii::PhysicalDevice const& phyDev, vk::StructureChain<Ts...> const& features);
 		template <class T>
@@ -70,11 +64,151 @@ namespace Vulkan {
 		bool hasPhysicalDeviceExtensions(vk::raii::PhysicalDevice const& phyDev, std::vector<const char*> const& extensions);
 
 		uint32_t queueFamilyIndex(vk::raii::PhysicalDevice const& phyDev, vk::raii::SurfaceKHR const& surf, vk::QueueFlagBits const& familyBits);
-		std::vector<vk::DeviceQueueCreateInfo> createDeviceQueueCreateInfos(std::vector<std::tuple<vk::QueueFlagBits, uint32_t, float>> const& queuesInfo, std::vector<uint32_t> const& familyIndices);
+		std::vector<vk::DeviceQueueCreateInfo> createDeviceQueueCreateInfos(std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo, std::vector<uint32_t> const& familyIndices);
 
 	public:
 		[[nodiscard]] static Context& get();
 		template <class... Ts>
 		void init(ContextInitInfo<Ts...> const& initInfo);
 	};
+
+	template <class... Ts>
+	void Context::init(ContextInitInfo<Ts...> const& initInfo) {
+		if (isInitialized) {
+			std::cout << "Context already initialized... returning...\n";
+			return;
+		}
+		else {
+			isInitialized = true;
+		}
+
+		initWindow(initInfo.windowWidth, initInfo.windowHeight, initInfo.appName);
+		initInstance(initInfo.apiVersion, initInfo.validationLayers);
+		initSurface();
+		initPhysicalDevice(initInfo.apiVersion, initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamilies);
+		initDevice(initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamilies);
+	}
+
+	template <class... Ts>
+	void Context::initPhysicalDevice(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
+		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings = ratePhysicalDevices(apiVersion, devExts, devFeats, queuesInfo);
+
+		bool foundSuitablePhysicalDevice = false;
+		for (uint32_t i = 0; i < physicalDeviceRatings.size(); i++) {
+			vk::raii::PhysicalDevice phyDev = instance.enumeratePhysicalDevices()[i];
+			std::cout << "Rating of " << phyDev.getProperties().deviceName << ": " << physicalDeviceRatings[i][0] << ' ' << physicalDeviceRatings[i][1] << ' ' << physicalDeviceRatings[i][2] << ' ' << physicalDeviceRatings[i][3] << '\n';
+
+			if (judgePhysicalDevice(physicalDeviceRatings[i]) == 4) {
+				foundSuitablePhysicalDevice = true;
+				physicalDevice = phyDev;
+				break;
+			}
+		}
+
+		if (!foundSuitablePhysicalDevice) {
+			throw std::runtime_error("No suitable GPU found");
+		}
+		else {
+			std::cout << "Physical device selection successful: " << physicalDevice.getProperties().deviceName << '\n';
+		}
+	}
+
+	template <class... Ts>
+	void Context::initDevice(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
+		std::vector<uint32_t> queueFamilyIndices{};
+		for (std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>> const& queueFamily : queuesInfo) {
+			queueFamilyIndices.push_back(queueFamilyIndex(physicalDevice, surface, std::get<0>(queueFamily)));
+		}
+
+		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos = createDeviceQueueCreateInfos(queuesInfo, queueFamilyIndices);
+
+		vk::DeviceCreateInfo deviceInfo = {
+			.pNext = &devFeats.get<vk::PhysicalDeviceFeatures2>(),
+			.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+			.pQueueCreateInfos = queueCreateInfos.data(),
+			.enabledExtensionCount = static_cast<uint32_t>(devExts.size()),
+			.ppEnabledExtensionNames = devExts.data()
+		};
+
+		device = vk::raii::Device(physicalDevice, deviceInfo);
+
+		queues.resize(queuesInfo.size());
+		for (uint32_t i = 0; i < queuesInfo.size(); i++) {
+			for (uint32_t j = 0; j < std::get<1>(queuesInfo[i]); j++) {
+				queues[i].push_back(vk::raii::Queue(device, queueFamilyIndices[i], j));
+			}
+		}
+
+		std::cout << "Device creation successful\n";
+	}
+
+	template <class... Ts>
+	std::vector<std::array<uint32_t, 4>> Context::ratePhysicalDevices(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
+		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings{};
+		std::vector<vk::raii::PhysicalDevice> physicalDevices = instance.enumeratePhysicalDevices();
+
+		for (vk::raii::PhysicalDevice const& phyDev : physicalDevices) {
+			std::array<uint32_t, 4> propertyChecklist = { 0, 0, 0, 0 };
+
+			if (hasMinimumApiVersion(phyDev, apiVersion)) {
+				propertyChecklist[0] = 1;
+			}
+
+			bool hasAllQueueFamiliesQueues = true;
+			for (std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>> const& queueFamily : queuesInfo) {
+				if (!hasQueueFamilyQueues(phyDev, std::get<0>(queueFamily), std::get<1>(queueFamily))) {
+					hasAllQueueFamiliesQueues = false;
+				}
+			}
+
+			if (hasAllQueueFamiliesQueues) {
+				propertyChecklist[1] = 1;
+			}
+
+			if (hasPhysicalDeviceExtensions(phyDev, devExts)) {
+				propertyChecklist[2] = 1;
+			}
+
+			if (hasPhysicalDeviceFeatures(phyDev, devFeats)) {
+				propertyChecklist[3] = 1;
+			}
+
+			physicalDeviceRatings.push_back(propertyChecklist);
+		}
+
+		return physicalDeviceRatings;
+	}
+
+	template <class... Ts>
+	bool Context::hasPhysicalDeviceFeatures(vk::raii::PhysicalDevice const& phyDev, vk::StructureChain<Ts...> const& features) {
+		vk::StructureChain<Ts...> availableFeatures = phyDev.getFeatures2<Ts...>();
+
+		return (... && featureBundleSupported(features.get<Ts>(), availableFeatures.get<Ts>()));
+	}
+
+	template <class T>
+	bool Context::featureBundleSupported(T const& required, T const& available) {
+		bool result = true;
+
+		size_t boolOffset = offsetof(T, pNext) + sizeof(void*);
+		size_t dataSize = sizeof(T) - boolOffset;
+
+		char const* requiredBoolOffset = reinterpret_cast<char const*>(&required) + boolOffset;
+		char const* availableBoolOffset = reinterpret_cast<char const*>(&available) + boolOffset;
+
+		for (uint32_t i = 0; i < dataSize; i += sizeof(VkBool32)) {
+			const VkBool32 required = *reinterpret_cast<VkBool32 const*>(requiredBoolOffset + i);
+			const VkBool32 available = *reinterpret_cast<VkBool32 const*>(availableBoolOffset + i);
+
+			if (required == VK_TRUE && available == VK_FALSE) {
+				result = false;
+				break;
+			}
+			else if (required == VK_TRUE && available == VK_TRUE) {
+				std::cout << "Required device feature supported: " << typeid(T).name() << " at location " << boolOffset + i << '\n';
+			}
+		}
+
+		return result;
+	}
 }

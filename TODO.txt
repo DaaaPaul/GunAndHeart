@@ -1,2 +1,6 @@
-queueCount and queueFamilies
+
 	- INCLUDE CHECKS FOR THE ABOVE AND THE OTHER PARAMETERS
+
+	verify validation layers
+
+	add discrete gpu to ratings
