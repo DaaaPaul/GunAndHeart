@@ -16,6 +16,19 @@ int main() {
 				vk::KHRSpirv14ExtensionName,
 				vk::KHRSynchronization2ExtensionName,
 				vk::KHRCreateRenderpass2ExtensionName
+			},
+			.deviceFeatures = 
+				vk::StructureChain<vk::PhysicalDeviceFeatures2,
+				vk::PhysicalDeviceVulkan11Features,
+				vk::PhysicalDeviceVulkan13Features,
+				vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> {
+					{},
+					{.shaderDrawParameters = true },
+					{.synchronization2 = true, .dynamicRendering = true },
+					{.extendedDynamicState = true }
+				},
+			.queueFamilies = {
+				{vk::QueueFlagBits::eGraphics, 1, 0.5f}
 			}
 		};
 

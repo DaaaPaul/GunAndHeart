@@ -11,19 +11,8 @@ namespace Vulkan {
 		surface{ nullptr }, 
 		physicalDevice{ nullptr }, 
 		device{ nullptr }, 
-		graphicsQueue{ nullptr },
-		WINDOW_WIDTH{ 0 },
-		WINDOW_HEIGHT{ 0 },
-		windowName{ nullptr },
-		VALIDATION_LAYERS{},
-		DEVICE_EXTENSIONS{},
-		deviceFeatures{ {}, {}, {}, {} }
+		queues{}
 	{
-
-		deviceFeatures.get<vk::PhysicalDeviceVulkan11Features>().shaderDrawParameters = true;
-		deviceFeatures.get<vk::PhysicalDeviceVulkan13Features>().synchronization2 = true;
-		deviceFeatures.get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering = true;
-		deviceFeatures.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState = true;
 
 	}
 
@@ -37,7 +26,8 @@ namespace Vulkan {
 		return context;
 	}
 
-	void Context::init(ContextInitInfo const& initInfo) {
+	template <class... Ts>
+	void Context::init(ContextInitInfo<Ts...> const& initInfo) {
 		if (isInitialized) {
 			std::cout << "Context already initialized... returning...\n";
 			return;
@@ -45,11 +35,13 @@ namespace Vulkan {
 			isInitialized = true;
 		}
 
+		static vk::StructureChain<Ts...> deviceFeatures = initInfo.deviceFeatures;
+
 		initWindow(initInfo.windowWidth, initInfo.windowHeight, initInfo.appName);
 		initInstance(initInfo.apiVersion, initInfo.validationLayers);
 		initSurface();
-		initPhysicalDevice(initInfo.apiVersion, initInfo.deviceExtensions);
-		initDevice();
+		initPhysicalDevice(initInfo.apiVersion, initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamilies);
+		initDevice(initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamilies);
 	}
 
 	void Context::initWindow(int const& WIDTH, int const& HEIGHT, const char* name) {
@@ -64,7 +56,7 @@ namespace Vulkan {
 		}
 	}
 
-	void Context::initInstance(double const& apiVersion, const std::vector<const char*>& VALIDATION) {
+	void Context::initInstance(double const& apiVersion, const std::vector<const char*>& validLays) {
 		vk::ApplicationInfo appInfo = {
 			.apiVersion = doubleApiVersionToVkApiVersion(apiVersion)
 		};
@@ -77,9 +69,9 @@ namespace Vulkan {
 			.ppEnabledExtensionNames = glfwExtensionInfo.second
 		};
 
-		if(!VALIDATION.empty()) {
-			instanceInfo.enabledLayerCount = static_cast<uint32_t>(VALIDATION.size());
-			instanceInfo.ppEnabledLayerNames = VALIDATION.data();
+		if(!validLays.empty()) {
+			instanceInfo.enabledLayerCount = static_cast<uint32_t>(validLays.size());
+			instanceInfo.ppEnabledLayerNames = validLays.data();
 		}
 
 		instance = vk::raii::Instance(context, instanceInfo);
@@ -96,8 +88,9 @@ namespace Vulkan {
 		std::cout << "Surface creation successful\n";
 	}
 
-	void Context::initPhysicalDevice(double const& apiVersion, std::vector<const char*> const& devExts) {
-		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings = ratePhysicalDevices(apiVersion, devExts);
+	template <class... Ts>
+	void Context::initPhysicalDevice(double const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, float>> const& queuesInfo) {
+		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings = ratePhysicalDevices(apiVersion, devExts, devFeats, queuesInfo);
 
 		bool foundSuitablePhysicalDevice = false;
 		for(uint32_t i = 0; i < physicalDeviceRatings.size(); i++) {
@@ -118,25 +111,32 @@ namespace Vulkan {
 		}
 	}
 
-	void Context::initDevice() {
-		uint32_t graphicsQueueFamilyIndex = queueFamilyIndex(physicalDevice, surface, vk::QueueFlagBits::eGraphics);
-		float arbitraryPriority = 0.5f;
-		vk::DeviceQueueCreateInfo graphicsFamilyInfo = {
-			.queueFamilyIndex = graphicsQueueFamilyIndex,
-			.queueCount = 1,
-			.pQueuePriorities = &arbitraryPriority
-		};
+	template <class... Ts>
+	void Context::initDevice(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, float>> const& queuesInfo) {
+		std::vector<uint32_t> queueFamilyIndices{};
+		for(std::tuple<vk::QueueFlagBits, uint32_t, float> const& queueFamily : queuesInfo) {
+			queueFamilyIndices.push_back(queueFamilyIndex(physicalDevice, surface, std::get<0>(queuesInfo)));
+		}
+
+		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos = createDeviceQueueCreateInfos(queuesInfo, queueFamilyIndices);
 
 		vk::DeviceCreateInfo deviceInfo = {
-			.pNext = &deviceFeatures.get<vk::PhysicalDeviceFeatures2>(),
-			.queueCreateInfoCount = 1,
-			.pQueueCreateInfos = &graphicsFamilyInfo,
-			.enabledExtensionCount = static_cast<uint32_t>(DEVICE_EXTENSIONS.size()),
-			.ppEnabledExtensionNames = DEVICE_EXTENSIONS.data()
+			.pNext = &devFeats.get<vk::PhysicalDeviceFeatures2>(),
+			.queueCreateInfoCount = queueCreateInfos.size(),
+			.pQueueCreateInfos = queueCreateInfos.data(),
+			.enabledExtensionCount = static_cast<uint32_t>(devExts.size()),
+			.ppEnabledExtensionNames = devExts.data()
 		};
 
 		device = vk::raii::Device(physicalDevice, deviceInfo);
-		graphicsQueue = vk::raii::Queue(device, graphicsQueueFamilyIndex, 0);
+
+		for(uint32_t i = 0; i < std::tuple_size_v(decltype(queuesInfo)); i++) {
+			constexpr i_ = i;
+
+			for (uint32_t j = 0; j < std::get<i_>(queuesInfo); j++) {
+				queues[i].push_back(vk::raii::Queue(device, queueFamilyIndices[i], j));
+			}
+		}
 
 		std::cout << "Device creation successful\n";
 	}
@@ -178,7 +178,8 @@ namespace Vulkan {
 		return haveGlfwExtensions;
 	}
 
-	std::vector<std::array<uint32_t, 4>> Context::ratePhysicalDevices(double const& apiVersion, std::vector<const char*> const& devExts) {
+	template <class... Ts>
+	std::vector<std::array<uint32_t, 4>> Context::ratePhysicalDevices(double const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, float>> const& queuesInfo) {
 		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings{};
 		std::vector<vk::raii::PhysicalDevice> physicalDevices = instance.enumeratePhysicalDevices();
 
@@ -189,7 +190,14 @@ namespace Vulkan {
 				propertyChecklist[0] = 1;
 			}
 
-			if(hasQueueFamily(phyDev, vk::QueueFlagBits::eGraphics)) {
+			bool hasAllQueueFamilies = true;
+			for(std::tuple<vk::QueueFlagBits, uint32_t, float> const& queueFamily : queuesInfo) {
+				if(!hasQueueFamily(phyDev, std::get<0>(queueFamily))) {
+					hasAllQueueFamilies = false;
+				}
+			}
+
+			if (hasAllQueueFamilies) {
 				propertyChecklist[1] = 1;
 			}
 
@@ -197,7 +205,7 @@ namespace Vulkan {
 				propertyChecklist[2] = 1;
 			}
 
-			if(hasPhysicalDeviceFeatures(phyDev, deviceFeatures)) {
+			if(hasPhysicalDeviceFeatures(phyDev, devFeats)) {
 				propertyChecklist[3] = 1;
 			}
 
@@ -296,12 +304,38 @@ namespace Vulkan {
 		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = phyDev.getQueueFamilyProperties();
 
 		for(uint32_t i = 0; i < queueFamilyProperties.size(); i++) {
-			if ((queueFamilyProperties[i].queueFlags & familyBits) && (phyDev.getSurfaceSupportKHR(i, surf))) {
-				familyIndex = i;
-				break;
+			if (queueFamilyProperties[i].queueFlags & familyBits) {
+				if(familyBits & vk::QueueFlagBits::eGraphics) {
+					if(phyDev.getSurfaceSupportKHR(i, surf)) {
+						familyIndex = i;
+						break;
+					}
+				} else {
+					familyIndex = i;
+					break;
+				}
 			}
 		}
 
 		return familyIndex;
+	}
+
+	std::vector<vk::DeviceQueueCreateInfo> Context::createDeviceQueueCreateInfos(std::vector<std::tuple<vk::QueueFlagBits, uint32_t, float>> const& queuesInfo, std::vector<uint32_t> const& familyIndices) {
+		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{};
+
+		std::vector<float> priorities{};
+		for(std::tuple<vk::QueueFlagBits, uint32_t, float> const& queueFamily : queuesInfo) {
+			priorities.push_back(std::get<2>(queueFamily));
+		}
+
+		for(uint32_t i = 0; i < familyIndices.size(); i++) {
+			queueCreateInfos.push_back(vk::DeviceQueueCreateInfo{
+				.queueFamilyIndex = familyIndices[i],
+				.queueCount = std::get<1>(queuesInfo[i]),
+				.pQueuePriorities = priorities.data()
+			});
+		}
+
+		return queueCreateInfos;
 	}
 }

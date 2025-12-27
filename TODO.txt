@@ -1,3 +1,2 @@
-apiVersion,
 queueCount and queueFamilies
 	- INCLUDE CHECKS FOR THE ABOVE AND THE OTHER PARAMETERS
