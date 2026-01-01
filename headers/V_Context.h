@@ -65,6 +65,7 @@ namespace Vulkan {
 	public:
 		template <class... Ts>
 		Context(ContextInitInfo<Ts...> const& initInfo);
+		Context(Context&& moveFrom);
 		~Context();
 	};
 

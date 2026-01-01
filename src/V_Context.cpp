@@ -3,6 +3,11 @@
 #include <limits>
 
 namespace Vulkan {
+	Context::Context(Context&& moveFrom) : context(std::move(moveFrom.context)), instance(std::move(moveFrom.instance)), surface(std::move(moveFrom.surface)), physicalDevice(std::move(moveFrom.physicalDevice)), device(std::move(moveFrom.device)) {
+		window = moveFrom.window;
+		moveFrom.window = nullptr;
+	}
+
 	Context::~Context() {
 		glfwDestroyWindow(window);
 		glfwTerminate();
