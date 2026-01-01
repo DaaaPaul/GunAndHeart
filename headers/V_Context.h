@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <utility>
+#include <string>
 #include <tuple>
 
 namespace Vulkan {
@@ -42,12 +43,13 @@ namespace Vulkan {
 
 		// for initInstance
 		std::pair<uint32_t, const char**> enumerateGlfwExtensions();
+		bool verifyHaveValidationLayers(std::vector<const char*> const& needs);
 		bool verifyHaveGlfwExtensions(uint32_t const& needCount, const char**& needs);
 
 		// for initPhysicalDevice
 		template <class... Ts>
-		std::vector<std::array<uint32_t, 4>> ratePhysicalDevices(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
-		uint32_t judgePhysicalDevice(std::array<uint32_t, 4> rating);
+		std::vector<std::array<std::pair<std::string, uint32_t>, 4>> ratePhysicalDevices(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
+		uint32_t judgePhysicalDevice(std::array<std::pair<std::string, uint32_t>, 4> rating);
 		bool hasMinimumApiVersion(vk::raii::PhysicalDevice const& phyDev, uint32_t const& apiVersion);
 		bool hasQueueFamilyQueues(vk::raii::PhysicalDevice const& phyDev, vk::QueueFlagBits const& familyBits, uint32_t const& queueCount);
 		template <class... Ts>
@@ -69,20 +71,29 @@ namespace Vulkan {
 	template <class... Ts>
 	Context::Context(ContextInitInfo<Ts...> const& initInfo) : window{ nullptr }, context{}, instance{ nullptr }, surface{ nullptr }, physicalDevice{ nullptr }, device{ nullptr }, queues{} {
 		initWindow(initInfo.windowWidth, initInfo.windowHeight, initInfo.appName);
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initInstance(initInfo.apiVersion, initInfo.validationLayers);
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initSurface();
-		initPhysicalDevice(initInfo.apiVersion, initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamilies);
-		initDevice(initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamilies);
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
+		initPhysicalDevice(initInfo.apiVersion, initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamiliesInfo);
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
+		initDevice(initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamiliesInfo);
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
 	template <class... Ts>
 	void Context::initPhysicalDevice(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
-		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings = ratePhysicalDevices(apiVersion, devExts, devFeats, queuesInfo);
+		std::vector<std::array<std::pair<std::string, uint32_t>, 4>> physicalDeviceRatings = ratePhysicalDevices(apiVersion, devExts, devFeats, queuesInfo);
 
 		bool foundSuitablePhysicalDevice = false;
 		for (uint32_t i = 0; i < physicalDeviceRatings.size(); i++) {
 			vk::raii::PhysicalDevice phyDev = instance.enumeratePhysicalDevices()[i];
-			std::cout << "Rating of " << phyDev.getProperties().deviceName << ": " << physicalDeviceRatings[i][0] << ' ' << physicalDeviceRatings[i][1] << ' ' << physicalDeviceRatings[i][2] << ' ' << physicalDeviceRatings[i][3] << '\n';
+			std::cout << "Rating of " << phyDev.getProperties().deviceName << ": \n" << 
+				physicalDeviceRatings[i][0].first << " is " << physicalDeviceRatings[i][0].second << '\n' << 
+				physicalDeviceRatings[i][1].first << " is " << physicalDeviceRatings[i][1].second << '\n' << 
+				physicalDeviceRatings[i][2].first << " is " << physicalDeviceRatings[i][2].second << '\n' << 
+				physicalDeviceRatings[i][3].first << " is " << physicalDeviceRatings[i][3].second << '\n';
 
 			if (judgePhysicalDevice(physicalDeviceRatings[i]) == 4) {
 				foundSuitablePhysicalDevice = true;
@@ -136,15 +147,20 @@ namespace Vulkan {
 	}
 
 	template <class... Ts>
-	std::vector<std::array<uint32_t, 4>> Context::ratePhysicalDevices(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
-		std::vector<std::array<uint32_t, 4>> physicalDeviceRatings{};
+	std::vector<std::array<std::pair<std::string, uint32_t>, 4>> Context::ratePhysicalDevices(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
+		std::vector<std::array<std::pair<std::string, uint32_t>, 4>> physicalDeviceRatings{};
 		std::vector<vk::raii::PhysicalDevice> physicalDevices = instance.enumeratePhysicalDevices();
 
 		for (vk::raii::PhysicalDevice const& phyDev : physicalDevices) {
-			std::array<uint32_t, 4> propertyChecklist = { 0, 0, 0, 0 };
+			std::array<std::pair<std::string, uint32_t>, 4> propertyChecklist = { {
+				{"Has minimum api version", 0u},
+				{"Has all queue families and sufficient queues for each", 0u},
+				{"Has all required extensions", 0u},
+				{"Has all required features", 0u}
+			}};
 
 			if (hasMinimumApiVersion(phyDev, apiVersion)) {
-				propertyChecklist[0] = 1;
+				propertyChecklist[0].second = 1;
 			}
 
 			bool hasAllQueueFamiliesQueues = true;
@@ -155,15 +171,15 @@ namespace Vulkan {
 			}
 
 			if (hasAllQueueFamiliesQueues) {
-				propertyChecklist[1] = 1;
+				propertyChecklist[1].second = 1;
 			}
 
 			if (hasPhysicalDeviceExtensions(phyDev, devExts)) {
-				propertyChecklist[2] = 1;
+				propertyChecklist[2].second = 1;
 			}
 
 			if (hasPhysicalDeviceFeatures(phyDev, devFeats)) {
-				propertyChecklist[3] = 1;
+				propertyChecklist[3].second = 1;
 			}
 
 			physicalDeviceRatings.push_back(propertyChecklist);

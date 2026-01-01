@@ -1,7 +1,0 @@
-	- THINK ABOUT MORE PARAMETERS FOR VULKAN::CONTEXT INIT?
-
-	- INCLUDE CHECKS FOR THE ABOVE AND THE OTHER PARAMETERS
-
-	verify validation layers
-
-	add discrete gpu to ratings

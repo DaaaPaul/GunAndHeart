@@ -20,7 +20,7 @@ namespace Vulkan {
 		}
 	}
 
-	void Context::initInstance(uint32_t const& apiVersion, const std::vector<const char*>& validLays) {
+	void Context::initInstance(uint32_t const& apiVersion, std::vector<const char*> const& validLays) {
 		vk::ApplicationInfo appInfo = {
 			.apiVersion = apiVersion
 		};
@@ -34,8 +34,12 @@ namespace Vulkan {
 		};
 
 		if(!validLays.empty()) {
-			instanceInfo.enabledLayerCount = static_cast<uint32_t>(validLays.size());
-			instanceInfo.ppEnabledLayerNames = validLays.data();
+			if(verifyHaveValidationLayers(validLays)) {
+				instanceInfo.enabledLayerCount = static_cast<uint32_t>(validLays.size());
+				instanceInfo.ppEnabledLayerNames = validLays.data();
+			} else {
+				throw std::runtime_error("Required validation layer not supported");
+			}
 		}
 
 		instance = vk::raii::Instance(context, instanceInfo);
@@ -93,11 +97,37 @@ namespace Vulkan {
 		return haveGlfwExtensions;
 	}
 
-	uint32_t Context::judgePhysicalDevice(std::array<uint32_t, 4> rating) {
+	bool Context::verifyHaveValidationLayers(std::vector<const char*> const& needs) {
+		bool haveValidationLayers = true;
+		
+		std::vector<vk::LayerProperties> layerProperties = context.enumerateInstanceLayerProperties();
+
+		bool layerFound = false;
+		for (uint32_t i = 0; i < needs.size(); ++i) {
+			layerFound = false;
+
+			for (vk::LayerProperties const& property : layerProperties) {
+				if (strcmp(property.layerName, needs[i]) == 0) {
+					layerFound = true;
+					break;
+				}
+			}
+
+			if (!layerFound) {
+				haveValidationLayers = false;
+			} else {
+				std::cout << "Required validation layer supported:" << needs[i] << '\n';
+			}
+		}
+
+		return haveValidationLayers;
+	}
+
+	uint32_t Context::judgePhysicalDevice(std::array<std::pair<std::string, uint32_t>, 4> rating) {
 		uint32_t judgement = 0;
 
-		for(uint32_t const& value : rating) {
-			judgement += value;
+		for(std::pair<std::string, uint32_t> const& value : rating) {
+			judgement += value.second;
 		}
 
 		return judgement;
