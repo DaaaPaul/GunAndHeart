@@ -4,8 +4,6 @@
 
 int main() {
 	try {
-		Vulkan::Context& context = Vulkan::Context::get();
-
 		Vulkan::ContextInitInfo<vk::PhysicalDeviceFeatures2,
 		vk::PhysicalDeviceVulkan11Features,
 		vk::PhysicalDeviceVulkan13Features,
@@ -31,12 +29,12 @@ int main() {
 					{.synchronization2 = true, .dynamicRendering = true },
 					{.extendedDynamicState = true }
 				},
-			.queueFamilies = {
+			.queueFamiliesInfo = {
 				{vk::QueueFlagBits::eGraphics, 1, {0.5f}}
 			}
 		};
 
-		context.init(contextInfo);
+		Vulkan::Context context(contextInfo);
 	} catch(std::exception const& e) {
 		std::cout << e.what() << '\n';
 	}

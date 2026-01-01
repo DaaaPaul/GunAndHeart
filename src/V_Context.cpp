@@ -3,27 +3,9 @@
 #include <limits>
 
 namespace Vulkan {
-	Context::Context() : 
-		isInitialized{ false },
-		window{ nullptr }, 
-		context{}, 
-		instance{ nullptr }, 
-		surface{ nullptr }, 
-		physicalDevice{ nullptr }, 
-		device{ nullptr }, 
-		queues{}
-	{
-
-	}
-
 	Context::~Context() {
 		glfwDestroyWindow(window);
 		glfwTerminate();
-	}
-
-	Context& Context::get() {
-		static Context context;
-		return context;
 	}
 
 	void Context::initWindow(int const& WIDTH, int const& HEIGHT, const char* name) {
@@ -34,7 +16,7 @@ namespace Vulkan {
 		if (window == NULL) {
 			throw std::runtime_error("Window creation failure");
 		} else {
-			std::cout << "Window creation successful\n";
+			std::cout << "Window creation successful with parameters {WIDTH: " << WIDTH << "} {HEIGHT: " << HEIGHT << "} {NAME: " << name << "}\n";
 		}
 	}
 
@@ -58,7 +40,11 @@ namespace Vulkan {
 
 		instance = vk::raii::Instance(context, instanceInfo);
 
-		std::cout << "Instance creation successful\n";
+		std::cout << "Instance creation successful with parameters {API VERSION: " << apiVersion << "} {VALIDATION LAYERS: ";
+		for(const char* lay : validLays) {
+			std::cout << lay << ", ";
+		}
+		std::cout << "}\n";
 	}
 
 	void Context::initSurface() {

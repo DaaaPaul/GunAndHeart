@@ -19,20 +19,11 @@ namespace Vulkan {
 		std::vector<const char*> validationLayers{};
 		std::vector<const char*> deviceExtensions{};
 		vk::StructureChain<Ts...> deviceFeatures{};
-		std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> queueFamilies{};
+		std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> queueFamiliesInfo{};
 	};
 
 	class Context {
 	private:
-		Context();
-		~Context();
-		Context(Context const&) = delete;
-		Context& operator=(Context const&) = delete;
-		Context(Context&&) = delete;
-		Context& operator=(Context&&) = delete;
-
-		bool isInitialized;
-
 		GLFWwindow* window;
 		vk::raii::Context context;
 		vk::raii::Instance instance;
@@ -49,9 +40,11 @@ namespace Vulkan {
 		template <class... Ts>
 		void initDevice(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
 
+		// for initInstance
 		std::pair<uint32_t, const char**> enumerateGlfwExtensions();
 		bool verifyHaveGlfwExtensions(uint32_t const& needCount, const char**& needs);
 
+		// for initPhysicalDevice
 		template <class... Ts>
 		std::vector<std::array<uint32_t, 4>> ratePhysicalDevices(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
 		uint32_t judgePhysicalDevice(std::array<uint32_t, 4> rating);
@@ -63,25 +56,18 @@ namespace Vulkan {
 		bool featureBundleSupported(T const& requested, T const& supported);
 		bool hasPhysicalDeviceExtensions(vk::raii::PhysicalDevice const& phyDev, std::vector<const char*> const& extensions);
 
+		// for initDevice
 		uint32_t queueFamilyIndex(vk::raii::PhysicalDevice const& phyDev, vk::raii::SurfaceKHR const& surf, vk::QueueFlagBits const& familyBits);
 		std::vector<vk::DeviceQueueCreateInfo> createDeviceQueueCreateInfos(std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo, std::vector<uint32_t> const& familyIndices);
 
 	public:
-		[[nodiscard]] static Context& get();
 		template <class... Ts>
-		void init(ContextInitInfo<Ts...> const& initInfo);
+		Context(ContextInitInfo<Ts...> const& initInfo);
+		~Context();
 	};
 
 	template <class... Ts>
-	void Context::init(ContextInitInfo<Ts...> const& initInfo) {
-		if (isInitialized) {
-			std::cout << "Context already initialized... returning...\n";
-			return;
-		}
-		else {
-			isInitialized = true;
-		}
-
+	Context::Context(ContextInitInfo<Ts...> const& initInfo) : window{ nullptr }, context{}, instance{ nullptr }, surface{ nullptr }, physicalDevice{ nullptr }, device{ nullptr }, queues{} {
 		initWindow(initInfo.windowWidth, initInfo.windowHeight, initInfo.appName);
 		initInstance(initInfo.apiVersion, initInfo.validationLayers);
 		initSurface();
@@ -139,7 +125,14 @@ namespace Vulkan {
 			}
 		}
 
-		std::cout << "Device creation successful\n";
+		std::cout << "Device creation successful with queue families:\n";
+		for (uint32_t i = 0; i < queues.size(); i++) {
+			std::cout << "\tQueue family " << queueFamilyIndices[i] << " on this GPU with " << queues[i].size() << " queues with priorities {";
+			for (float const& f : std::get<2>(queuesInfo[i])) {
+				std::cout << f << ", ";
+			}
+			std::cout << "}\n";
+		}
 	}
 
 	template <class... Ts>
