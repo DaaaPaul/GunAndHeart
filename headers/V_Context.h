@@ -43,7 +43,7 @@ namespace Vulkan {
 		template <class... Ts>
 		void initPhysicalDevice(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
 		template <class... Ts>
-		void initDevice(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
+		void initDeviceAndQueues(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo);
 
 		// for initInstance
 		std::pair<uint32_t, const char**> enumerateGlfwExtensions();
@@ -62,7 +62,7 @@ namespace Vulkan {
 		bool featureBundleSupported(T const& requested, T const& supported);
 		bool hasPhysicalDeviceExtensions(vk::raii::PhysicalDevice const& phyDev, std::vector<const char*> const& extensions);
 
-		// for initDevice
+		// for initDeviceAndQueues
 		uint32_t queueFamilyIndex(vk::raii::PhysicalDevice const& phyDev, vk::raii::SurfaceKHR const& surf, vk::QueueFlagBits const& familyBits);
 		std::vector<vk::DeviceQueueCreateInfo> createDeviceQueueCreateInfos(std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo, std::vector<uint32_t> const& familyIndices);
 
@@ -87,7 +87,7 @@ namespace Vulkan {
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initPhysicalDevice(initInfo.apiVersion, initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamiliesInfo);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initDevice(initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamiliesInfo);
+		initDeviceAndQueues(initInfo.deviceExtensions, initInfo.deviceFeatures, initInfo.queueFamiliesInfo);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
@@ -120,7 +120,7 @@ namespace Vulkan {
 	}
 
 	template <class... Ts>
-	void Context::initDevice(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
+	void Context::initDeviceAndQueues(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
 		std::vector<uint32_t> queueFamilyIndices{};
 		for (std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>> const& queueFamily : queuesInfo) {
 			queueFamilyIndices.push_back(queueFamilyIndex(physicalDevice, surface, std::get<0>(queueFamily)));

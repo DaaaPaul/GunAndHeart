@@ -2,15 +2,20 @@
 
 namespace Vulkan {
 	Engine::Engine(Context&& context, EngineInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, commandPool{ nullptr }, commandBuffers{}, readyToRender{}, renderingFinished{}, commandBufferFinished{} {
-		initSwapchain(initInfo.swapchainFormat, initInfo.swapchainImageCount, initInfo.swapchainPresentMode, initInfo.swapchainImageAttachment, initInfo.swapchainImageSharingMode, initInfo.swapchainQueueFamilyAccessorCount, initInfo.swapchainQueueFamilyAccessorIndiceList, initInfo.swapchainPreTransform);
+		initSwapchainAndImageViews(initInfo.swapchainFormat, initInfo.swapchainImageCount, initInfo.swapchainPresentMode, initInfo.swapchainImageUsage, initInfo.imageViewAspect, initInfo.swapchainImageSharingMode, initInfo.swapchainQueueFamilyAccessorCount, initInfo.swapchainQueueFamilyAccessorIndiceList, initInfo.swapchainPreTransform);
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initGraphicsPipeline();
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initCommandPool();
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initCommandBuffers();
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initSemaphores();
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initFences();
 	}
 
-	void Engine::initSwapchain(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& attachment, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform) {
+	void Engine::initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& imageUsage, vk::ImageAspectFlagBits const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform) {
 		vk::Extent2D extent = getSurfaceExtent();
 		vk::SurfaceFormatKHR format = getScFormat(desiredFormat);
 		uint32_t imageCount = getScImageCount(desiredImageCount);
@@ -26,14 +31,14 @@ namespace Vulkan {
 			throw std::runtime_error("Desired swapchain present mode not supported");
 		}
 
-		vk::SwapchainCreateInfoKHR swapchainCreateInfo = {
+		vk::SwapchainCreateInfoKHR swapchainInfo = {
 			.surface = context.surface,
 			.minImageCount = imageCount,
 			.imageFormat = format.format,
 			.imageColorSpace = format.colorSpace,
 			.imageExtent = extent,
 			.imageArrayLayers = 1,
-			.imageUsage = attachment,
+			.imageUsage = imageUsage,
 			.imageSharingMode = sharingMode,
 			.queueFamilyIndexCount = queueFamilyAccessorCount,
 			.pQueueFamilyIndices = queueFamilyAccessorIndiceList,
@@ -43,8 +48,24 @@ namespace Vulkan {
 			.clipped = true
 		};
 
-		swapchain = vk::raii::SwapchainKHR(context.device, swapchainCreateInfo);
+		swapchain = vk::raii::SwapchainKHR(context.device, swapchainInfo);
 		std::cout << "Created swapchain\n";
+
+		std::vector<vk::Image> scImages = swapchain.getImages();
+
+		vk::ImageViewCreateInfo imageViewCreateInfo = {
+			.image = {},
+			.viewType = vk::ImageViewType::e2D,
+			.format = format.format,
+			.subresourceRange = vk::ImageSubresourceRange(imageViewAspect, 0, 1, 0, 1)
+		};
+
+		for(vk::Image const& scIm : scImages) {
+			imageViewCreateInfo.image = scIm;
+			scImageViews.push_back(vk::raii::ImageView(context.device, imageViewCreateInfo));
+		}
+
+		std::cout << "Created " << scImageViews.size() << " image views for the swapchain\n";
 	}
 
 	void Engine::initGraphicsPipeline() {

@@ -7,7 +7,8 @@ namespace Vulkan {
 		vk::SurfaceFormatKHR swapchainFormat;
 		uint32_t swapchainImageCount;
 		vk::PresentModeKHR swapchainPresentMode;
-		vk::ImageUsageFlagBits swapchainImageAttachment;
+		vk::ImageUsageFlagBits swapchainImageUsage;
+		vk::ImageAspectFlagBits imageViewAspect;
 		vk::SharingMode swapchainImageSharingMode;
 		uint32_t swapchainQueueFamilyAccessorCount;
 		uint32_t* swapchainQueueFamilyAccessorIndiceList;
@@ -26,7 +27,7 @@ namespace Vulkan {
 		std::vector<vk::raii::Semaphore> renderingFinished;
 		std::vector<vk::raii::Fence> commandBufferFinished;
 
-		void initSwapchain(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& attachment, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform);
+		void initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& imageUsage, vk::ImageAspectFlagBits const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform);
 		void initGraphicsPipeline();
 		void initCommandPool();
 		void initCommandBuffers();
