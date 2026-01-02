@@ -11,6 +11,8 @@
 #include <tuple>
 
 namespace Vulkan {
+	class Engine;
+
 	template <class... Ts>
 	struct ContextInitInfo {
 		int windowWidth = 0;
@@ -32,6 +34,8 @@ namespace Vulkan {
 		vk::raii::PhysicalDevice physicalDevice;
 		vk::raii::Device device;
 		std::vector<std::vector<vk::raii::Queue>> queues;
+
+		std::vector<uint32_t> queueFamilyIndices;
 
 		void initWindow(int const& WIDTH, int const& HEIGHT, const char* name);
 		void initInstance(uint32_t const& apiVersion, const std::vector<const char*>& validLays);
@@ -63,10 +67,14 @@ namespace Vulkan {
 		std::vector<vk::DeviceQueueCreateInfo> createDeviceQueueCreateInfos(std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo, std::vector<uint32_t> const& familyIndices);
 
 	public:
+		friend class Engine;
+
 		template <class... Ts>
 		Context(ContextInitInfo<Ts...> const& initInfo);
 		Context(Context&& moveFrom);
 		~Context();
+
+		std::vector<uint32_t> getQueueFamilyIndices() const;
 	};
 
 	template <class... Ts>
@@ -117,6 +125,7 @@ namespace Vulkan {
 		for (std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>> const& queueFamily : queuesInfo) {
 			queueFamilyIndices.push_back(queueFamilyIndex(physicalDevice, surface, std::get<0>(queueFamily)));
 		}
+		this->queueFamilyIndices = queueFamilyIndices;
 
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos = createDeviceQueueCreateInfos(queuesInfo, queueFamilyIndices);
 

@@ -214,4 +214,8 @@ namespace Vulkan {
 
 		return queueCreateInfos;	
 	}
+
+	std::vector<uint32_t> Context::getQueueFamilyIndices() const {
+		return queueFamilyIndices;
+	}
 }

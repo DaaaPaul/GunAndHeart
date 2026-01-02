@@ -33,8 +33,19 @@ int main() {
 				{vk::QueueFlagBits::eGraphics, 1, {0.5f}}
 			}
 		};
-
 		Vulkan::Context context(contextInfo);
+
+		Vulkan::EngineInitInfo engineInfo = {
+			.swapchainFormat = vk::SurfaceFormatKHR(vk::Format::eR8G8B8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear),
+			.swapchainImageCount = 2,
+			.swapchainPresentMode = vk::PresentModeKHR::eMailbox,
+			.swapchainImageAttachment = vk::ImageUsageFlagBits::eColorAttachment,
+			.swapchainImageSharingMode = vk::SharingMode::eExclusive,
+			.swapchainQueueFamilyAccessorCount = 1,
+			.swapchainQueueFamilyAccessorIndiceList = context.getQueueFamilyIndices().data(),
+			.swapchainPreTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity
+		};
+		Vulkan::Engine engine(std::move(context), engineInfo);
 	} catch(std::exception const& e) {
 		std::cout << e.what() << '\n';
 	}
