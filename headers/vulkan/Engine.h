@@ -1,6 +1,6 @@
 #pragma once
 
-#include "V_Context.h"
+#include "vulkan/Context.h"
 
 namespace Vulkan {
 	struct EngineInitInfo {
@@ -38,6 +38,8 @@ namespace Vulkan {
 		vk::SurfaceFormatKHR getScFormat(vk::SurfaceFormatKHR const& desiredFormat);
 		uint32_t getScImageCount(uint32_t const& desiredImageCount);
 		vk::PresentModeKHR getScPresentMode(vk::PresentModeKHR const& desiredPresentMode);
+
+		std::vector<char> spirvFileBytes(std::string const& path);
 
 	public:
 		Engine(Context&& context, EngineInitInfo const& initInfo);

@@ -15,18 +15,18 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="headers\V_Context.h">
+    <ClInclude Include="headers\vulkan\Context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="headers\V_Engine.h">
+    <ClInclude Include="headers\vulkan\Engine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\V_Engine.cpp">
+    <ClCompile Include="src\vulkan\Engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\V_Context.cpp">
+    <ClCompile Include="src\vulkan\Context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\main.cpp">
