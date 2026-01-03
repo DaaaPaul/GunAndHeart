@@ -1,22 +1,15 @@
-#include "vulkan/Engine.h"
+#include "vulkan/GraphicsContext.h"
 #include <fstream>
 
 namespace Vulkan {
-	Engine::Engine(Context&& context, EngineInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, commandPool{ nullptr }, commandBuffers{}, readyToRender{}, renderingFinished{}, commandBufferFinished{} {
+	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr } {
 		initSwapchainAndImageViews(initInfo.swapchainFormat, initInfo.swapchainImageCount, initInfo.swapchainPresentMode, initInfo.swapchainImageUsage, initInfo.imageViewAspect, initInfo.swapchainImageSharingMode, initInfo.swapchainQueueFamilyAccessorCount, initInfo.swapchainQueueFamilyAccessorIndiceList, initInfo.swapchainPreTransform);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initGraphicsPipeline();
+		initGraphicsPipeline(initInfo.pipelineSprivModulePath);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initCommandPool();
-		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initCommandBuffers();
-		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initSemaphores();
-		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initFences();
 	}
 
-	void Engine::initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& imageUsage, vk::ImageAspectFlagBits const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform) {
+	void GraphicsContext::initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& imageUsage, vk::ImageAspectFlagBits const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform) {
 		vk::Extent2D extent = getSurfaceExtent();
 		vk::SurfaceFormatKHR format = getScFormat(desiredFormat);
 		uint32_t imageCount = getScImageCount(desiredImageCount);
@@ -69,39 +62,17 @@ namespace Vulkan {
 		std::cout << "Created " << scImageViews.size() << " image views for the swapchain\n";
 	}
 
-	void Engine::initGraphicsPipeline() {
-		vk::PipelineShaderStageCreateInfo vertexShaderInfo = {
-			.stage = vk::ShaderStageFlagBits::eVertex,
-			.module = shaderModule,
-			.pName = "vertexShader",
-		};
-		vk::PipelineShaderStageCreateInfo fragmentShaderInfo = {
-			.stage = vk::ShaderStageFlagBits::eFragment,
-			.module = shaderModule,
-			.pName = "fragmentShader",
-		};
-		std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStagesInfo = { vertexShaderInfo , fragmentShaderInfo };
+	void GraphicsContext::initGraphicsPipeline(std::string const& sprivPath) {
+		////std::vector<std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*>> configurableStageInfos = {
+		////	{vk::ShaderStageFlagBits::eVertex, getShaderModule(sprivPath), "vertexShader"},
+		////	{vk::ShaderStageFlagBits::eFragment, getShaderModule(sprivPath), "fragmentShader"}
+		////};
+		//std::vector<vk::PipelineShaderStageCreateInfo> vertexAndFragmentShader = getConfigurableShaderStageInfos(configurableStageInfos);
 
-	}
-
-	void Engine::initCommandPool() {
-		
-	}
-
-	void Engine::initCommandBuffers() {
-		
-	}
-
-	void Engine::initSemaphores() {
-		
-	}
-
-	void Engine::initFences() {
-		
 	}
 
 	// already decided by how large the window is
-	vk::Extent2D Engine::getSurfaceExtent() {
+	vk::Extent2D GraphicsContext::getSurfaceExtent() {
 		vk::SurfaceCapabilitiesKHR surfaceCapabilities = context.physicalDevice.getSurfaceCapabilitiesKHR(context.surface);
 		vk::Extent2D selectedExtent{};
 
@@ -123,7 +94,7 @@ namespace Vulkan {
 	}
 
 	// returns vk::SurfaceFormatKHR{} if desiredFormat is not found in compatible formats
-	vk::SurfaceFormatKHR Engine::getScFormat(vk::SurfaceFormatKHR const& desiredFormat) {
+	vk::SurfaceFormatKHR GraphicsContext::getScFormat(vk::SurfaceFormatKHR const& desiredFormat) {
 		std::vector<vk::SurfaceFormatKHR> compatibleSurfaceFormats = context.physicalDevice.getSurfaceFormatsKHR(context.surface);
 		vk::SurfaceFormatKHR selectedFormat{};
 
@@ -137,7 +108,7 @@ namespace Vulkan {
 	}
 
 	// returns 0xFFFFFFFF if desired image count is outside of possible range
-	uint32_t Engine::getScImageCount(uint32_t const& desiredImageCount) {
+	uint32_t GraphicsContext::getScImageCount(uint32_t const& desiredImageCount) {
 		vk::SurfaceCapabilitiesKHR surfaceCapabilities = context.physicalDevice.getSurfaceCapabilitiesKHR(context.surface);
 		uint32_t selectedImageCount = 0xFFFFFFFF;
 		uint32_t minImages = surfaceCapabilities.minImageCount;
@@ -151,7 +122,7 @@ namespace Vulkan {
 	}
 
 	// returns vk::PresentModeKHR{} if desiredPresentMode is not found in compatible present modes
-	vk::PresentModeKHR Engine::getScPresentMode(vk::PresentModeKHR const& desiredPresentMode) {
+	vk::PresentModeKHR GraphicsContext::getScPresentMode(vk::PresentModeKHR const& desiredPresentMode) {
 		std::vector<vk::PresentModeKHR> compatiblePresentModes = context.physicalDevice.getSurfacePresentModesKHR(context.surface);
 		vk::PresentModeKHR selectedPresentMode{};
 
@@ -164,7 +135,7 @@ namespace Vulkan {
 		return selectedPresentMode;
 	}
 
-	vk::raii::ShaderModule Engine::getShaderModule(std::string const& sprivPath) {
+	vk::raii::ShaderModule GraphicsContext::getShaderModule(std::string const& sprivPath) {
 		std::vector<char> sprivShader = fileBytes(sprivPath);
 
 		vk::ShaderModuleCreateInfo shaderModuleInfo = {
@@ -176,7 +147,21 @@ namespace Vulkan {
 		return shaderModule;
 	}
 
-	std::vector<char> Engine::fileBytes(std::string const& path) {
+	std::vector<vk::PipelineShaderStageCreateInfo> GraphicsContext::getConfigurableShaderStageInfos(std::vector<std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*>> const& infos) {
+		std::vector<vk::PipelineShaderStageCreateInfo> configurableShaderStageInfos{};
+
+		for(std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*> const& info : infos) {
+			configurableShaderStageInfos.push_back(vk::PipelineShaderStageCreateInfo{
+				.stage = std::get<0>(info),
+				.module = std::get<1>(info),
+				.pName = std::get<2>(info)
+			});
+		}
+
+		return configurableShaderStageInfos;
+	}
+
+	std::vector<char> GraphicsContext::fileBytes(std::string const& path) {
 		std::ifstream fileInput(path, std::ios::ate | std::ios::binary);
 		if(!fileInput.good()) {
 			return { 'x' };

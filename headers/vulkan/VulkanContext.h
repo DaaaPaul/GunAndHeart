@@ -11,10 +11,10 @@
 #include <tuple>
 
 namespace Vulkan {
-	class Engine;
+	class GraphicsContext;
 
 	template <class... Ts>
-	struct ContextInitInfo {
+	struct VulkanContextInitInfo {
 		int windowWidth = 0;
 		int windowHeight = 0;
 		const char* appName = nullptr;
@@ -25,7 +25,7 @@ namespace Vulkan {
 		std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> queueFamiliesInfo{};
 	};
 
-	class Context {
+	class VulkanContext {
 	private:
 		GLFWwindow* window;
 		vk::raii::Context context;
@@ -67,18 +67,18 @@ namespace Vulkan {
 		std::vector<vk::DeviceQueueCreateInfo> createDeviceQueueCreateInfos(std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo, std::vector<uint32_t> const& familyIndices);
 
 	public:
-		friend class Engine;
+		friend class GraphicsContext;
 
 		template <class... Ts>
-		Context(ContextInitInfo<Ts...> const& initInfo);
-		Context(Context&& moveFrom);
-		~Context();
+		VulkanContext(VulkanContextInitInfo<Ts...> const& initInfo);
+		VulkanContext(VulkanContext&& moveFrom);
+		~VulkanContext();
 
 		std::vector<uint32_t> getQueueFamilyIndices() const;
 	};
 
 	template <class... Ts>
-	Context::Context(ContextInitInfo<Ts...> const& initInfo) : window{ nullptr }, context{}, instance{ nullptr }, surface{ nullptr }, physicalDevice{ nullptr }, device{ nullptr }, queues{} {
+	VulkanContext::VulkanContext(VulkanContextInitInfo<Ts...> const& initInfo) : window{ nullptr }, context{}, instance{ nullptr }, surface{ nullptr }, physicalDevice{ nullptr }, device{ nullptr }, queues{} {
 		initWindow(initInfo.windowWidth, initInfo.windowHeight, initInfo.appName);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initInstance(initInfo.apiVersion, initInfo.validationLayers);
@@ -92,7 +92,7 @@ namespace Vulkan {
 	}
 
 	template <class... Ts>
-	void Context::initPhysicalDevice(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
+	void VulkanContext::initPhysicalDevice(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
 		std::vector<std::array<std::pair<std::string, uint32_t>, 4>> physicalDeviceRatings = ratePhysicalDevices(apiVersion, devExts, devFeats, queuesInfo);
 
 		bool foundSuitablePhysicalDevice = false;
@@ -120,7 +120,7 @@ namespace Vulkan {
 	}
 
 	template <class... Ts>
-	void Context::initDeviceAndQueues(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
+	void VulkanContext::initDeviceAndQueues(std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
 		std::vector<uint32_t> queueFamilyIndices{};
 		for (std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>> const& queueFamily : queuesInfo) {
 			queueFamilyIndices.push_back(queueFamilyIndex(physicalDevice, surface, std::get<0>(queueFamily)));
@@ -157,7 +157,7 @@ namespace Vulkan {
 	}
 
 	template <class... Ts>
-	std::vector<std::array<std::pair<std::string, uint32_t>, 4>> Context::ratePhysicalDevices(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
+	std::vector<std::array<std::pair<std::string, uint32_t>, 4>> VulkanContext::ratePhysicalDevices(uint32_t const& apiVersion, std::vector<const char*> const& devExts, vk::StructureChain<Ts...> const& devFeats, std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo) {
 		std::vector<std::array<std::pair<std::string, uint32_t>, 4>> physicalDeviceRatings{};
 		std::vector<vk::raii::PhysicalDevice> physicalDevices = instance.enumeratePhysicalDevices();
 
@@ -199,14 +199,14 @@ namespace Vulkan {
 	}
 
 	template <class... Ts>
-	bool Context::hasPhysicalDeviceFeatures(vk::raii::PhysicalDevice const& phyDev, vk::StructureChain<Ts...> const& features) {
+	bool VulkanContext::hasPhysicalDeviceFeatures(vk::raii::PhysicalDevice const& phyDev, vk::StructureChain<Ts...> const& features) {
 		vk::StructureChain<Ts...> availableFeatures = phyDev.getFeatures2<Ts...>();
 
 		return (... && featureBundleSupported(features.get<Ts>(), availableFeatures.get<Ts>()));
 	}
 
 	template <class T>
-	bool Context::featureBundleSupported(T const& required, T const& available) {
+	bool VulkanContext::featureBundleSupported(T const& required, T const& available) {
 		bool result = true;
 
 		size_t boolOffset = offsetof(T, pNext) + sizeof(void*);

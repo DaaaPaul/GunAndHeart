@@ -1,10 +1,10 @@
 #include <iostream>
-#include "vulkan/Context.h"
-#include "vulkan/Engine.h"
+#include "vulkan/VulkanContext.h"
+#include "vulkan/GraphicsContext.h"
 
 int main() {
 	try {
-		Vulkan::ContextInitInfo<vk::PhysicalDeviceFeatures2,
+		Vulkan::VulkanContextInitInfo<vk::PhysicalDeviceFeatures2,
 		vk::PhysicalDeviceVulkan11Features,
 		vk::PhysicalDeviceVulkan13Features,
 		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> contextInfo = {
@@ -33,9 +33,9 @@ int main() {
 				{vk::QueueFlagBits::eGraphics, 1, {0.5f}}
 			}
 		};
-		Vulkan::Context context(contextInfo);
+		Vulkan::VulkanContext context(contextInfo);
 
-		Vulkan::EngineInitInfo engineInfo = {
+		Vulkan::GraphicsContextInitInfo engineInfo = {
 			.swapchainFormat = vk::SurfaceFormatKHR(vk::Format::eR8G8B8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear),
 			.swapchainImageCount = 2,
 			.swapchainPresentMode = vk::PresentModeKHR::eMailbox,
@@ -46,7 +46,7 @@ int main() {
 			.swapchainQueueFamilyAccessorIndiceList = context.getQueueFamilyIndices().data(),
 			.swapchainPreTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity
 		};
-		Vulkan::Engine engine(std::move(context), engineInfo);
+		Vulkan::GraphicsContext engine(std::move(context), engineInfo);
 	} catch(std::exception const& e) {
 		std::cout << e.what() << '\n';
 	}
