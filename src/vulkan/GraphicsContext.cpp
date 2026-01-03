@@ -63,8 +63,8 @@ namespace Vulkan {
 	}
 
 	void GraphicsContext::initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& sprivInfos) {
-		std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> configurableStageInfos = sprivInfos;
-		std::vector<vk::PipelineShaderStageCreateInfo> vertexAndFragmentShader = getConfigurableShaderStageInfos(configurableStageInfos);
+		std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo = getConfigurableShaderStageInfos(sprivInfos);
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
 
 	}
 

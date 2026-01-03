@@ -6,17 +6,25 @@
 
 namespace Vulkan {
 	struct GraphicsContextInitInfo {
-		vk::SurfaceFormatKHR swapchainFormat;
-		uint32_t swapchainImageCount;
-		vk::PresentModeKHR swapchainPresentMode;
-		vk::ImageUsageFlagBits swapchainImageUsage;
-		vk::ImageAspectFlagBits imageViewAspect;
-		vk::SharingMode swapchainImageSharingMode;
-		uint32_t swapchainQueueFamilyAccessorCount;
-		uint32_t* swapchainQueueFamilyAccessorIndiceList;
-		vk::SurfaceTransformFlagBitsKHR swapchainPreTransform;
+		vk::SurfaceFormatKHR scFormat;
+		uint32_t scImageCount;
+		vk::PresentModeKHR scPresentMode;
+		vk::ImageUsageFlagBits scImageUsage;
+		vk::ImageAspectFlagBits scImageViewAspect;
+		vk::SharingMode scImageSharingMode;
+		uint32_t scQueueFamilyAccessorCount;
+		uint32_t* scQueueFamilyAccessorIndiceList;
+		vk::SurfaceTransformFlagBitsKHR scPreTransform;
 
-		std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> pipelineSprivModuleInfos;
+		std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> gpSprivModuleInfos;
+		// VERTEX INPUT INFO MISSING
+		std::tuple<vk::PrimitiveTopology, bool> gpInputAssemblyInfo;
+		std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> gpViewportStateInfo;
+		std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> gpRasterizationInfo;
+		// MULTISAMPLING INFO MISSING
+		// TODO: COLORBLEND INFO
+		std::vector<vk::DynamicState> dynamicStates;
+		// LAYOUT INFO MISSING
 	};
 
 	class GraphicsContext {
