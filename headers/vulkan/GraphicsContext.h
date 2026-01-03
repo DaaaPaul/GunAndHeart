@@ -16,7 +16,7 @@ namespace Vulkan {
 		uint32_t* swapchainQueueFamilyAccessorIndiceList;
 		vk::SurfaceTransformFlagBitsKHR swapchainPreTransform;
 
-		std::string pipelineSprivModulePath;
+		std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> pipelineSprivModuleInfos;
 	};
 
 	class GraphicsContext {
@@ -27,15 +27,15 @@ namespace Vulkan {
 		vk::raii::Pipeline graphicsPipeline;
 
 		void initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& imageUsage, vk::ImageAspectFlagBits const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform);
-		void initGraphicsPipeline(std::string const& sprivPath);
+		void initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& sprivInfos);
 
 		vk::Extent2D getSurfaceExtent();
 		vk::SurfaceFormatKHR getScFormat(vk::SurfaceFormatKHR const& desiredFormat);
 		uint32_t getScImageCount(uint32_t const& desiredImageCount);
 		vk::PresentModeKHR getScPresentMode(vk::PresentModeKHR const& desiredPresentMode);
 
-		vk::raii::ShaderModule getShaderModule(std::string const& sprivPath);
-		std::vector<vk::PipelineShaderStageCreateInfo> getConfigurableShaderStageInfos(std::vector<std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*>> const& infos);
+		vk::ShaderModule getShaderModule(std::string const& sprivPath);
+		std::vector<vk::PipelineShaderStageCreateInfo> getConfigurableShaderStageInfos(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& infos);
 		std::vector<char> fileBytes(std::string const& path);
 
 	public:

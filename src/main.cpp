@@ -44,9 +44,13 @@ int main() {
 			.swapchainImageSharingMode = vk::SharingMode::eExclusive,
 			.swapchainQueueFamilyAccessorCount = 1,
 			.swapchainQueueFamilyAccessorIndiceList = context.getQueueFamilyIndices().data(),
-			.swapchainPreTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity
+			.swapchainPreTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity,
+			.pipelineSprivModuleInfos = {
+				{vk::ShaderStageFlagBits::eVertex, "shaders/shader.spv", "vertexShader"},
+				{vk::ShaderStageFlagBits::eFragment, "shaders/shader.spv", "fragmentShader"}
+			}
 		};
-		Vulkan::GraphicsContext engine(std::move(context), engineInfo);
+		Vulkan::GraphicsContext graphicsContext(std::move(context), engineInfo);
 	} catch(std::exception const& e) {
 		std::cout << e.what() << '\n';
 	}

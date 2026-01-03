@@ -5,7 +5,7 @@ namespace Vulkan {
 	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr } {
 		initSwapchainAndImageViews(initInfo.swapchainFormat, initInfo.swapchainImageCount, initInfo.swapchainPresentMode, initInfo.swapchainImageUsage, initInfo.imageViewAspect, initInfo.swapchainImageSharingMode, initInfo.swapchainQueueFamilyAccessorCount, initInfo.swapchainQueueFamilyAccessorIndiceList, initInfo.swapchainPreTransform);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initGraphicsPipeline(initInfo.pipelineSprivModulePath);
+		initGraphicsPipeline(initInfo.pipelineSprivModuleInfos);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
@@ -62,12 +62,9 @@ namespace Vulkan {
 		std::cout << "Created " << scImageViews.size() << " image views for the swapchain\n";
 	}
 
-	void GraphicsContext::initGraphicsPipeline(std::string const& sprivPath) {
-		////std::vector<std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*>> configurableStageInfos = {
-		////	{vk::ShaderStageFlagBits::eVertex, getShaderModule(sprivPath), "vertexShader"},
-		////	{vk::ShaderStageFlagBits::eFragment, getShaderModule(sprivPath), "fragmentShader"}
-		////};
-		//std::vector<vk::PipelineShaderStageCreateInfo> vertexAndFragmentShader = getConfigurableShaderStageInfos(configurableStageInfos);
+	void GraphicsContext::initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& sprivInfos) {
+		std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> configurableStageInfos = sprivInfos;
+		std::vector<vk::PipelineShaderStageCreateInfo> vertexAndFragmentShader = getConfigurableShaderStageInfos(configurableStageInfos);
 
 	}
 
@@ -135,25 +132,29 @@ namespace Vulkan {
 		return selectedPresentMode;
 	}
 
-	vk::raii::ShaderModule GraphicsContext::getShaderModule(std::string const& sprivPath) {
+	vk::ShaderModule GraphicsContext::getShaderModule(std::string const& sprivPath) {
 		std::vector<char> sprivShader = fileBytes(sprivPath);
+
+		if(sprivShader.size() == 1 && sprivShader[0] == 'x') {
+			throw std::runtime_error("Failure reading spriv file at " + sprivPath);
+		}
 
 		vk::ShaderModuleCreateInfo shaderModuleInfo = {
 			.codeSize = sprivShader.size() * sizeof(char),
 			.pCode = reinterpret_cast<uint32_t*>(sprivShader.data())
 		};
-		vk::raii::ShaderModule shaderModule(context.device, shaderModuleInfo);
+		vk::ShaderModule shaderModule = context.device.createShaderModule(shaderModuleInfo);
 
 		return shaderModule;
 	}
 
-	std::vector<vk::PipelineShaderStageCreateInfo> GraphicsContext::getConfigurableShaderStageInfos(std::vector<std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*>> const& infos) {
+	std::vector<vk::PipelineShaderStageCreateInfo> GraphicsContext::getConfigurableShaderStageInfos(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& infos) {
 		std::vector<vk::PipelineShaderStageCreateInfo> configurableShaderStageInfos{};
 
-		for(std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*> const& info : infos) {
+		for(std::tuple<vk::ShaderStageFlagBits, const char*, const char*> const& info : infos) {
 			configurableShaderStageInfos.push_back(vk::PipelineShaderStageCreateInfo{
 				.stage = std::get<0>(info),
-				.module = std::get<1>(info),
+				.module = getShaderModule(std::get<1>(info)),
 				.pName = std::get<2>(info)
 			});
 		}
