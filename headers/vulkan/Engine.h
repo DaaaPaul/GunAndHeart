@@ -39,7 +39,8 @@ namespace Vulkan {
 		uint32_t getScImageCount(uint32_t const& desiredImageCount);
 		vk::PresentModeKHR getScPresentMode(vk::PresentModeKHR const& desiredPresentMode);
 
-		std::vector<char> spirvFileBytes(std::string const& path);
+		vk::raii::ShaderModule getShaderModule(std::string const& sprivPath);
+		std::vector<char> fileBytes(std::string const& path);
 
 	public:
 		Engine(Context&& context, EngineInitInfo const& initInfo);

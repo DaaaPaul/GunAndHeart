@@ -1,4 +1,5 @@
 #include "vulkan/Engine.h"
+#include <fstream>
 
 namespace Vulkan {
 	Engine::Engine(Context&& context, EngineInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, commandPool{ nullptr }, commandBuffers{}, readyToRender{}, renderingFinished{}, commandBufferFinished{} {
@@ -69,7 +70,18 @@ namespace Vulkan {
 	}
 
 	void Engine::initGraphicsPipeline() {
-		
+		vk::PipelineShaderStageCreateInfo vertexShaderInfo = {
+			.stage = vk::ShaderStageFlagBits::eVertex,
+			.module = shaderModule,
+			.pName = "vertexShader",
+		};
+		vk::PipelineShaderStageCreateInfo fragmentShaderInfo = {
+			.stage = vk::ShaderStageFlagBits::eFragment,
+			.module = shaderModule,
+			.pName = "fragmentShader",
+		};
+		std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStagesInfo = { vertexShaderInfo , fragmentShaderInfo };
+
 	}
 
 	void Engine::initCommandPool() {
@@ -150,5 +162,30 @@ namespace Vulkan {
 		}
 
 		return selectedPresentMode;
+	}
+
+	vk::raii::ShaderModule Engine::getShaderModule(std::string const& sprivPath) {
+		std::vector<char> sprivShader = fileBytes(sprivPath);
+
+		vk::ShaderModuleCreateInfo shaderModuleInfo = {
+			.codeSize = sprivShader.size() * sizeof(char),
+			.pCode = reinterpret_cast<uint32_t*>(sprivShader.data())
+		};
+		vk::raii::ShaderModule shaderModule(context.device, shaderModuleInfo);
+
+		return shaderModule;
+	}
+
+	std::vector<char> Engine::fileBytes(std::string const& path) {
+		std::ifstream fileInput(path, std::ios::ate | std::ios::binary);
+		if(!fileInput.good()) {
+			return { 'x' };
+		}
+
+		std::vector<char> bytes(fileInput.tellg());
+		fileInput.seekg(0);
+		fileInput.read(bytes.data(), bytes.size());
+
+		return bytes;
 	}
 }

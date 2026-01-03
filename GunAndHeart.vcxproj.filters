@@ -36,4 +36,11 @@
   <ItemGroup>
     <Text Include="TODO.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\shader.slang" />
+    <None Include="shaders\compile.bat">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="shaders\shader.spv" />
+  </ItemGroup>
 </Project>
