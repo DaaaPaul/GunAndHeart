@@ -3,9 +3,9 @@
 
 namespace Vulkan {
 	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr } {
-		initSwapchainAndImageViews(initInfo.swapchainFormat, initInfo.swapchainImageCount, initInfo.swapchainPresentMode, initInfo.swapchainImageUsage, initInfo.imageViewAspect, initInfo.swapchainImageSharingMode, initInfo.swapchainQueueFamilyAccessorCount, initInfo.swapchainQueueFamilyAccessorIndiceList, initInfo.swapchainPreTransform);
+		initSwapchainAndImageViews(initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initGraphicsPipeline(initInfo.pipelineSprivModuleInfos);
+		initGraphicsPipeline(initInfo.gpSprivModuleInfos, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
@@ -62,10 +62,20 @@ namespace Vulkan {
 		std::cout << "Created " << scImageViews.size() << " image views for the swapchain\n";
 	}
 
-	void GraphicsContext::initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& sprivInfos) {
+	void GraphicsContext::initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& sprivInfos, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlagBits>>, std::tuple<bool, vk::LogicOp, uint32_t, vk::PipelineColorBlendAttachmentState*, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo) {
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo = getConfigurableShaderStageInfos(sprivInfos);
-		vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+		
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo; // HARD CODED NANA
 
+		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {
+			.topology = std::get<0>(inAssemInfo),
+			.primitiveRestartEnable = static_cast<uint32_t>(std::get<1>(inAssemInfo))
+		};
+
+
+		vk::PipelineViewportStateCreateInfo viewInfo = {
+			
+		};
 	}
 
 	// already decided by how large the window is
