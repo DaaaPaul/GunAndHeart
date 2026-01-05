@@ -5,7 +5,7 @@ namespace Vulkan {
 	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr } {
 		initSwapchainAndImageViews(initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initGraphicsPipeline(initInfo.gpSprivModuleInfos, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
+		initGraphicsPipeline(initInfo.gpShaderStageInfos, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
@@ -62,20 +62,12 @@ namespace Vulkan {
 		std::cout << "Created " << scImageViews.size() << " image views for the swapchain\n";
 	}
 
-	void GraphicsContext::initGraphicsPipeline(const char* const& sprivInfos, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>, std::tuple<bool, vk::LogicOp, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo) {
-		std::vector<char> buf = fileBytes("shaders/shader.spv");
-		vk::raii::ShaderModule shaderModule = getShaderModule(buf);
-		vk::PipelineShaderStageCreateInfo yes1 = {
-			.stage = vk::ShaderStageFlagBits::eVertex,
-			.module = shaderModule,
-			.pName = "vertexShader"
-		};
-		vk::PipelineShaderStageCreateInfo yes2 = {
-			.stage = vk::ShaderStageFlagBits::eFragment,
-			.module = shaderModule,
-			.pName = "fragmentShader"
-		};
-		std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo = { yes1, yes2 };
+	void GraphicsContext::initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& shaderStageInfos, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>, std::tuple<bool, vk::LogicOp, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo) {
+		std::vector<std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*>> shaderStageInfosConverted{};
+		for(int i = 0; i < shaderStageInfos.size(); i++) {
+			shaderStageInfosConverted.push_back(std::make_tuple(std::get<0>(shaderStageInfos[i]), getShaderModule(std::get<1>(shaderStageInfos[i])), std::get<2>(shaderStageInfos[i])));
+		}
+		std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo = getConfigurableShaderStageInfos(shaderStageInfosConverted);
 
 		vk::PipelineVertexInputStateCreateInfo vertexInputInfo; // HARD CODED NANA
 
@@ -220,10 +212,31 @@ namespace Vulkan {
 		return selectedPresentMode;
 	}
 
-	vk::raii::ShaderModule GraphicsContext::getShaderModule(std::vector<char> const& bytes) {
+	std::vector<vk::PipelineShaderStageCreateInfo> GraphicsContext::getConfigurableShaderStageInfos(std::vector<std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*>> const& infos) {
+		std::vector<vk::PipelineShaderStageCreateInfo> configurableShaderStageInfos{};
+
+		for (std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*> const& info : infos) {
+			configurableShaderStageInfos.push_back(vk::PipelineShaderStageCreateInfo {
+				.stage = std::get<0>(info),
+				.module = std::get<1>(info),
+				.pName = std::get<2>(info)
+			});
+		}
+
+		return configurableShaderStageInfos;
+	}
+
+
+	vk::raii::ShaderModule GraphicsContext::getShaderModule(std::string const& sprivPath) {
+		std::vector<char> sprivShader = fileBytes(sprivPath);
+
+		if (sprivShader.size() == 1 && sprivShader[0] == 'x') {
+			throw std::runtime_error("Failure reading spriv file at " + sprivPath);
+		}
+
 		vk::ShaderModuleCreateInfo shaderModuleInfo = {
-			.codeSize = bytes.size() * sizeof(char),
-			.pCode = reinterpret_cast<const uint32_t*>(bytes.data())
+			.codeSize = sprivShader.size() * sizeof(char),
+			.pCode = reinterpret_cast<uint32_t*>(sprivShader.data())
 		};
 		vk::raii::ShaderModule shaderModule = context.device.createShaderModule(shaderModuleInfo);
 
@@ -232,14 +245,13 @@ namespace Vulkan {
 
 	std::vector<char> GraphicsContext::fileBytes(std::string const& path) {
 		std::ifstream fileInput(path, std::ios::ate | std::ios::binary);
-		if(!fileInput.good()) {
-			throw std::runtime_error("Failure reading file at " + path);
+		if (!fileInput.good()) {
+			return { 'x' };
 		}
 
 		std::vector<char> bytes(fileInput.tellg());
-		fileInput.seekg(0, std::ios::beg);
-		fileInput.read(bytes.data(), static_cast<std::streamsize>(bytes.size()));
-		fileInput.close();
+		fileInput.seekg(0);
+		fileInput.read(bytes.data(), bytes.size());
 
 		return bytes;
 	}

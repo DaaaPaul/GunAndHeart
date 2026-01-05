@@ -45,7 +45,10 @@ int main() {
 			.scQueueFamilyAccessorCount = 1,
 			.scQueueFamilyAccessorIndiceList = context.getQueueFamilyIndices().data(),
 			.scPreTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity,
-			.gpSprivModuleInfos = "shaders/shader.spv",
+			.gpShaderStageInfos = {
+				{vk::ShaderStageFlagBits::eVertex, "shaders/shader.spv", "vertexShader"},
+				{vk::ShaderStageFlagBits::eFragment, "shaders/shader.spv", "fragmentShader"}
+			},
 			.gpInputAssemblyInfo = {
 				vk::PrimitiveTopology::eTriangleList,
 				false
