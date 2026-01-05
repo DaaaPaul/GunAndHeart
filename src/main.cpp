@@ -36,18 +36,58 @@ int main() {
 		Vulkan::VulkanContext context(contextInfo);
 
 		Vulkan::GraphicsContextInitInfo engineInfo = {
-			.swapchainFormat = vk::SurfaceFormatKHR(vk::Format::eR8G8B8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear),
-			.swapchainImageCount = 2,
-			.swapchainPresentMode = vk::PresentModeKHR::eMailbox,
-			.swapchainImageUsage = vk::ImageUsageFlagBits::eColorAttachment,
-			.imageViewAspect = vk::ImageAspectFlagBits::eColor,
-			.swapchainImageSharingMode = vk::SharingMode::eExclusive,
-			.swapchainQueueFamilyAccessorCount = 1,
-			.swapchainQueueFamilyAccessorIndiceList = context.getQueueFamilyIndices().data(),
-			.swapchainPreTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity,
-			.pipelineSprivModuleInfos = {
-				{vk::ShaderStageFlagBits::eVertex, "shaders/shader.spv", "vertexShader"},
-				{vk::ShaderStageFlagBits::eFragment, "shaders/shader.spv", "fragmentShader"}
+			.scFormat = vk::SurfaceFormatKHR(vk::Format::eR8G8B8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear),
+			.scImageCount = 2,
+			.scPresentMode = vk::PresentModeKHR::eMailbox,
+			.scImageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+			.scImageViewAspect = vk::ImageAspectFlagBits::eColor,
+			.scImageSharingMode = vk::SharingMode::eExclusive,
+			.scQueueFamilyAccessorCount = 1,
+			.scQueueFamilyAccessorIndiceList = context.getQueueFamilyIndices().data(),
+			.scPreTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity,
+			.gpSprivModuleInfos = "shaders/shader.spv",
+			.gpInputAssemblyInfo = {
+				vk::PrimitiveTopology::eTriangleList,
+				false
+			},
+			.gpViewportStateInfo = {
+				{0.0f, 0.0f, 800.0f, 800.0f, 0.0f, 1.0f},
+				{0, 0, 800, 800}
+			},
+			.gpRasterizationInfo = {
+				false,
+				false,
+				vk::PolygonMode::eFill,
+				vk::CullModeFlagBits::eBack,
+				vk::FrontFace::eClockwise,
+				false,
+				1.0f,
+				0.0f,
+				1.0f,
+				1.0f
+			},
+			.gpColourBlendingInfo = {
+				{
+					std::make_tuple(
+						false,
+						vk::BlendFactor::eOne,
+						vk::BlendFactor::eOne,
+						vk::BlendOp::eAdd,
+						vk::BlendFactor::eOne,
+						vk::BlendFactor::eOne,
+						vk::BlendOp::eAdd,
+						vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA
+					)
+				},
+				std::make_tuple(
+					false,
+					vk::LogicOp::eClear,
+					std::array<float, 4>{ 1.0f, 1.0f, 1.0f, 1.0f }
+				)
+			},
+			.dynamicStates = {
+				vk::DynamicState::eViewport,
+				vk::DynamicState::eScissor
 			}
 		};
 		Vulkan::GraphicsContext graphicsContext(std::move(context), engineInfo);

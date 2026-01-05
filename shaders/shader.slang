@@ -12,14 +12,14 @@ static float4 colours[3] = float4[](
 
 struct VertexOutput {
     float4 colour;
-    float2 sv_position : SV_Position;
+    float4 sv_position : SV_Position;
 };
 
 [shader("vertex")]
 VertexOutput vertexShader(uint vertexID: SV_VertexID) {
     VertexOutput output;
     output.colour = colours[vertexID];
-    output.sv_position = positions[vertexID];
+    output.sv_position = float4(positions[vertexID], 0.0, 1.0);
 
     return output;
 }

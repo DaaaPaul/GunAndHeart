@@ -62,9 +62,21 @@ namespace Vulkan {
 		std::cout << "Created " << scImageViews.size() << " image views for the swapchain\n";
 	}
 
-	void GraphicsContext::initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& sprivInfos, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlagBits>>, std::tuple<bool, vk::LogicOp, uint32_t, vk::PipelineColorBlendAttachmentState*, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo) {
-		std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo = getConfigurableShaderStageInfos(sprivInfos);
-		
+	void GraphicsContext::initGraphicsPipeline(const char* const& sprivInfos, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>, std::tuple<bool, vk::LogicOp, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo) {
+		std::vector<char> buf = fileBytes("shaders/shader.spv");
+		vk::raii::ShaderModule shaderModule = getShaderModule(buf);
+		vk::PipelineShaderStageCreateInfo yes1 = {
+			.stage = vk::ShaderStageFlagBits::eVertex,
+			.module = shaderModule,
+			.pName = "vertexShader"
+		};
+		vk::PipelineShaderStageCreateInfo yes2 = {
+			.stage = vk::ShaderStageFlagBits::eFragment,
+			.module = shaderModule,
+			.pName = "fragmentShader"
+		};
+		std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo = { yes1, yes2 };
+
 		vk::PipelineVertexInputStateCreateInfo vertexInputInfo; // HARD CODED NANA
 
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {
@@ -72,10 +84,76 @@ namespace Vulkan {
 			.primitiveRestartEnable = static_cast<uint32_t>(std::get<1>(inAssemInfo))
 		};
 
-
-		vk::PipelineViewportStateCreateInfo viewInfo = {
-			
+		vk::Viewport viewport(std::get<0>(viewInfo)[0], std::get<0>(viewInfo)[1], std::get<0>(viewInfo)[2], std::get<0>(viewInfo)[3], std::get<0>(viewInfo)[4], std::get<0>(viewInfo)[5]);
+		vk::Rect2D scissor(vk::Offset2D(std::get<1>(viewInfo)[0], std::get<1>(viewInfo)[1]), vk::Extent2D(std::get<1>(viewInfo)[2], std::get<1>(viewInfo)[3]));
+		vk::PipelineViewportStateCreateInfo viewportScissorInfo = {
+			.viewportCount = 1,
+			.pViewports = &viewport,
+			.scissorCount = 1,
+			.pScissors = &scissor
 		};
+
+		vk::PipelineRasterizationStateCreateInfo rasterizationInfo = {
+			.depthClampEnable = std::get<0>(rasInfo),
+			.rasterizerDiscardEnable = std::get<1>(rasInfo),
+			.polygonMode = std::get<2>(rasInfo),
+			.cullMode = std::get<3>(rasInfo),
+			.frontFace = std::get<4>(rasInfo),
+			.depthBiasEnable = std::get<5>(rasInfo),
+			.depthBiasConstantFactor = std::get<6>(rasInfo),
+			.depthBiasClamp = std::get<7>(rasInfo),
+			.depthBiasSlopeFactor = std::get<8>(rasInfo),
+			.lineWidth = std::get<9>(rasInfo)
+		};
+
+		// HARD CODED NANA
+		vk::PipelineMultisampleStateCreateInfo multisampling{ .rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False };
+
+		std::vector<vk::PipelineColorBlendAttachmentState> attachmentInfos{};
+		for(std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags> const& attInfo : std::get<0>(cBlendInfo)) {
+			attachmentInfos.emplace_back(std::get<0>(attInfo), std::get<1>(attInfo), std::get<2>(attInfo), std::get<3>(attInfo), std::get<4>(attInfo), std::get<5>(attInfo), std::get<6>(attInfo), std::get<7>(attInfo));
+		}
+		vk::PipelineColorBlendStateCreateInfo colorBlendInfo = {
+			.logicOpEnable = std::get<0>(std::get<1>(cBlendInfo)),
+			.logicOp = std::get<1>(std::get<1>(cBlendInfo)),
+			.attachmentCount = static_cast<uint32_t>(attachmentInfos.size()),
+			.pAttachments = attachmentInfos.data(),
+			.blendConstants = std::get<2>(std::get<1>(cBlendInfo))
+		};
+
+		vk::PipelineDynamicStateCreateInfo dynamicStateInfo = {
+			.dynamicStateCount = static_cast<uint32_t>(dyInfo.size()),
+			.pDynamicStates = dyInfo.data()
+		};
+
+		// HARD CODED NANA
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo{ .setLayoutCount = 0, .pushConstantRangeCount = 0 };
+		vk::raii::PipelineLayout pipelineLayout = vk::raii::PipelineLayout(context.device, pipelineLayoutInfo);
+
+		// HARD CODED NANA
+		vk::Format tempformat = vk::Format::eR8G8B8A8Srgb;
+		vk::PipelineRenderingCreateInfo renderingAttachmentInfo = {
+			.colorAttachmentCount = 1,
+			.pColorAttachmentFormats = &tempformat
+		};
+
+		vk::GraphicsPipelineCreateInfo graphicsPipelineInfo = {
+			.pNext = &renderingAttachmentInfo,
+			.stageCount = 2,
+			.pStages = shaderCreateInfo.data(),
+			.pVertexInputState = &vertexInputInfo,
+			.pInputAssemblyState = &inputAssemblyInfo,
+			.pViewportState = &viewportScissorInfo,
+			.pRasterizationState = &rasterizationInfo,
+			.pMultisampleState = &multisampling,
+			.pColorBlendState = &colorBlendInfo,
+			.pDynamicState = &dynamicStateInfo,
+			.layout = pipelineLayout,
+			.renderPass = nullptr
+		};
+
+		graphicsPipeline = vk::raii::Pipeline(context.device, nullptr, graphicsPipelineInfo);
+		std::cout << "Created graphics pipeline\n";
 	}
 
 	// already decided by how large the window is
@@ -83,7 +161,7 @@ namespace Vulkan {
 		vk::SurfaceCapabilitiesKHR surfaceCapabilities = context.physicalDevice.getSurfaceCapabilitiesKHR(context.surface);
 		vk::Extent2D selectedExtent{};
 
-		if(surfaceCapabilities.currentExtent.width == 0xFFFFFFFF) {
+		if(surfaceCapabilities.currentExtent.width == 0xFFFFFFFF && surfaceCapabilities.currentExtent.height) {
 			int width = 0;
 			int height = 0;
 
@@ -142,45 +220,26 @@ namespace Vulkan {
 		return selectedPresentMode;
 	}
 
-	vk::ShaderModule GraphicsContext::getShaderModule(std::string const& sprivPath) {
-		std::vector<char> sprivShader = fileBytes(sprivPath);
-
-		if(sprivShader.size() == 1 && sprivShader[0] == 'x') {
-			throw std::runtime_error("Failure reading spriv file at " + sprivPath);
-		}
-
+	vk::raii::ShaderModule GraphicsContext::getShaderModule(std::vector<char> const& bytes) {
 		vk::ShaderModuleCreateInfo shaderModuleInfo = {
-			.codeSize = sprivShader.size() * sizeof(char),
-			.pCode = reinterpret_cast<uint32_t*>(sprivShader.data())
+			.codeSize = bytes.size() * sizeof(char),
+			.pCode = reinterpret_cast<const uint32_t*>(bytes.data())
 		};
-		vk::ShaderModule shaderModule = context.device.createShaderModule(shaderModuleInfo);
+		vk::raii::ShaderModule shaderModule = context.device.createShaderModule(shaderModuleInfo);
 
 		return shaderModule;
-	}
-
-	std::vector<vk::PipelineShaderStageCreateInfo> GraphicsContext::getConfigurableShaderStageInfos(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& infos) {
-		std::vector<vk::PipelineShaderStageCreateInfo> configurableShaderStageInfos{};
-
-		for(std::tuple<vk::ShaderStageFlagBits, const char*, const char*> const& info : infos) {
-			configurableShaderStageInfos.push_back(vk::PipelineShaderStageCreateInfo{
-				.stage = std::get<0>(info),
-				.module = getShaderModule(std::get<1>(info)),
-				.pName = std::get<2>(info)
-			});
-		}
-
-		return configurableShaderStageInfos;
 	}
 
 	std::vector<char> GraphicsContext::fileBytes(std::string const& path) {
 		std::ifstream fileInput(path, std::ios::ate | std::ios::binary);
 		if(!fileInput.good()) {
-			return { 'x' };
+			throw std::runtime_error("Failure reading file at " + path);
 		}
 
 		std::vector<char> bytes(fileInput.tellg());
-		fileInput.seekg(0);
-		fileInput.read(bytes.data(), bytes.size());
+		fileInput.seekg(0, std::ios::beg);
+		fileInput.read(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+		fileInput.close();
 
 		return bytes;
 	}

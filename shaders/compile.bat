@@ -1,1 +1,1 @@
-C:/VulkanSDK/1.4.321.1/Bin/slangc.exe shader.slang -target spirv -profile spirv_1_4 -emit-spirv-directly -fvk-use-entrypoint-name -entry vertexShader -entry fragmentShader -o shader.spv
+C:/VulkanSDK/1.4.321.1/Bin/slangc.exe shader.slang -target spirv -profile spirv_1_4 -fvk-use-entrypoint-name -entry vertexShader -stage vertex -entry fragmentShader -stage fragment -o shader.spv
