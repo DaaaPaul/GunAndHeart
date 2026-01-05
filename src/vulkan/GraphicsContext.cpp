@@ -9,6 +9,10 @@ namespace Vulkan {
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
+	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)) {
+	
+	}
+
 	void GraphicsContext::initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& imageUsage, vk::ImageAspectFlagBits const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform) {
 		vk::Extent2D extent = getSurfaceExtent();
 		vk::SurfaceFormatKHR format = getScFormat(desiredFormat);

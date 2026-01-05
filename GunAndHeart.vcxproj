@@ -11,11 +11,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="headers\vulkan\GraphicsEngine.h" />
     <ClInclude Include="headers\vulkan\VulkanContext.h" />
     <ClInclude Include="headers\vulkan\GraphicsContext.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\vulkan\GraphicsEngine.cpp" />
     <ClCompile Include="src\vulkan\VulkanContext.cpp" />
     <ClCompile Include="src\vulkan\GraphicsContext.cpp" />
   </ItemGroup>

@@ -5,6 +5,8 @@
 #include <string>
 
 namespace Vulkan {
+	class GraphicsEngine;
+
 	struct GraphicsContextInitInfo {
 		vk::SurfaceFormatKHR scFormat;
 		uint32_t scImageCount;
@@ -49,6 +51,9 @@ namespace Vulkan {
 		std::vector<char> fileBytes(std::string const& path);
 
 	public:
+		friend class GraphicsEngine;
+
 		GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo);
+		GraphicsContext(GraphicsContext&& moveFrom);
 	};
 }

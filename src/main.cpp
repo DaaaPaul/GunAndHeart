@@ -35,7 +35,7 @@ int main() {
 		};
 		Vulkan::VulkanContext context(contextInfo);
 
-		Vulkan::GraphicsContextInitInfo engineInfo = {
+		Vulkan::GraphicsContextInitInfo graphicsContextInfo = {
 			.scFormat = vk::SurfaceFormatKHR(vk::Format::eR8G8B8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear),
 			.scImageCount = 2,
 			.scPresentMode = vk::PresentModeKHR::eMailbox,
@@ -93,7 +93,7 @@ int main() {
 				vk::DynamicState::eScissor
 			}
 		};
-		Vulkan::GraphicsContext graphicsContext(std::move(context), engineInfo);
+		Vulkan::GraphicsContext graphicsContext(std::move(context), graphicsContextInfo);
 	} catch(std::exception const& e) {
 		std::cout << e.what() << '\n';
 	}
