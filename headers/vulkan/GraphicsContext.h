@@ -55,5 +55,10 @@ namespace Vulkan {
 
 		GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo);
 		GraphicsContext(GraphicsContext&& moveFrom);
+		
+		GraphicsContext(GraphicsContext const& copyFrom) = delete;
+		GraphicsContext& operator=(GraphicsContext const& assignFrom) = delete;
+		
+		VulkanContext& getContext();
 	};
 }

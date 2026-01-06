@@ -1,6 +1,7 @@
 #include <iostream>
 #include "vulkan/VulkanContext.h"
 #include "vulkan/GraphicsContext.h"
+#include "vulkan/GraphicsEngine.h"
 
 int main() {
 	try {
@@ -94,6 +95,16 @@ int main() {
 			}
 		};
 		Vulkan::GraphicsContext graphicsContext(std::move(context), graphicsContextInfo);
+
+		Vulkan::GraphicsEngineInitInfo graphicsEngineInfo = {
+			.commandPoolInfos = {
+				{vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient, graphicsContext.getContext().getQueueFamilyIndices()[0]}
+			},
+			.commandBufferInfos = {
+				{0, vk::CommandBufferLevel::ePrimary, 1}
+			}
+		};
+		Vulkan::GraphicsEngine graphicsEngine(std::move(graphicsContext), graphicsEngineInfo);
 	} catch(std::exception const& e) {
 		std::cout << e.what() << '\n';
 	}

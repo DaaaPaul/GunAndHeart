@@ -13,6 +13,10 @@ namespace Vulkan {
 	
 	}
 
+	VulkanContext& GraphicsContext::getContext() {
+		return context;
+	}
+
 	void GraphicsContext::initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& imageUsage, vk::ImageAspectFlagBits const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform) {
 		vk::Extent2D extent = getSurfaceExtent();
 		vk::SurfaceFormatKHR format = getScFormat(desiredFormat);

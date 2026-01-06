@@ -3,7 +3,7 @@
 #include <limits>
 
 namespace Vulkan {
-	VulkanContext::VulkanContext(VulkanContext&& moveFrom) : context(std::move(moveFrom.context)), instance(std::move(moveFrom.instance)), surface(std::move(moveFrom.surface)), physicalDevice(std::move(moveFrom.physicalDevice)), device(std::move(moveFrom.device)) {
+	VulkanContext::VulkanContext(VulkanContext&& moveFrom) : context(std::move(moveFrom.context)), instance(std::move(moveFrom.instance)), surface(std::move(moveFrom.surface)), physicalDevice(std::move(moveFrom.physicalDevice)), device(std::move(moveFrom.device)), acquiredQueueFamilyIndices(std::move(moveFrom.acquiredQueueFamilyIndices)) {
 		window = moveFrom.window;
 		moveFrom.window = nullptr;
 	}
@@ -216,6 +216,6 @@ namespace Vulkan {
 	}
 
 	std::vector<uint32_t> VulkanContext::getQueueFamilyIndices() const {
-		return queueFamilyIndices;
+		return acquiredQueueFamilyIndices;
 	}
 }
