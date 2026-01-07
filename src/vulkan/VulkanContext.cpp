@@ -184,7 +184,7 @@ namespace Vulkan {
 		uint32_t familyIndex = std::numeric_limits<uint32_t>::max();
 		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = phyDev.getQueueFamilyProperties();
 
-		for(uint32_t i = 0; i < queueFamilyProperties.size(); i++) {
+		for(int i = 0; i < queueFamilyProperties.size(); i++) {
 			if (queueFamilyProperties[i].queueFlags & familyBits) {
 				if(familyBits & vk::QueueFlagBits::eGraphics) {
 					if(phyDev.getSurfaceSupportKHR(i, surf)) {
@@ -204,7 +204,7 @@ namespace Vulkan {
 	std::vector<vk::DeviceQueueCreateInfo> VulkanContext::createDeviceQueueCreateInfos(std::vector<std::tuple<vk::QueueFlagBits, uint32_t, std::vector<float>>> const& queuesInfo, std::vector<uint32_t> const& familyIndices) {
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{};
 
-		for(uint32_t i = 0; i < queuesInfo.size(); i++) {
+		for(int i = 0; i < queuesInfo.size(); i++) {
 			queueCreateInfos.push_back(vk::DeviceQueueCreateInfo{
 				.queueFamilyIndex = familyIndices[i],
 				.queueCount = std::get<1>(queuesInfo[i]),

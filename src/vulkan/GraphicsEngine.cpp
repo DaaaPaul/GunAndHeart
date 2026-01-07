@@ -2,13 +2,13 @@
 
 namespace Vulkan {
 	GraphicsEngine::GraphicsEngine(GraphicsContext&& context, GraphicsEngineInitInfo const& initInfo) : graphicsContext(std::move(context)) {
-		initCommandPool(initInfo.commandPoolInfos);
+		initCommandPool(initInfo.commandPoolsInfos);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initCommandBuffers(initInfo.commandBufferInfos);
+		initCommandBuffers(initInfo.commandBuffersInfos);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initSemaphores();
+		initSemaphores(initInfo.semaphoresInfos);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initFences();
+		initFences(initInfo.fencesInfos);
 	}
 
 	GraphicsEngine::GraphicsEngine(GraphicsEngine&& moveFrom) : graphicsContext(std::move(moveFrom.graphicsContext)), commandPools(std::move(moveFrom.commandPools)), commandBuffers(std::move(moveFrom.commandBuffers)), readyToRender(std::move(moveFrom.readyToRender)), renderingFinished(std::move(moveFrom.renderingFinished)), commandBufferFinished(std::move(moveFrom.commandBufferFinished)) {
@@ -42,11 +42,23 @@ namespace Vulkan {
 		}
 	}
 
-	void GraphicsEngine::initSemaphores() {
-	
+	void GraphicsEngine::initSemaphores(std::tuple<uint32_t, uint32_t> const& semInfos) {
+		for(int i = 0; i < std::get<0>(semInfos); i++) {
+			readyToRender.emplace_back(graphicsContext.context.device, vk::SemaphoreCreateInfo{});
+		}
+
+		for (int i = 0; i < std::get<1>(semInfos); i++) {
+			renderingFinished.emplace_back(graphicsContext.context.device, vk::SemaphoreCreateInfo{});
+		}
+
+		std::cout << "Created " << readyToRender.size() << " semaphores for rendering ready, and " << renderingFinished.size() << " semaphores for finished\n";
 	}
 
-	void GraphicsEngine::initFences() {
-	
+	void GraphicsEngine::initFences(std::tuple<uint32_t, vk::FenceCreateFlags> const& fenInfos) {
+		for (int i = 0; i < std::get<0>(fenInfos); i++) {
+			commandBufferFinished.emplace_back(graphicsContext.context.device, vk::FenceCreateInfo{ .flags = std::get<1>(fenInfos) });
+		}
+
+		std::cout << "Created " << commandBufferFinished.size() << " fences\n";
 	}
 }

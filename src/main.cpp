@@ -97,13 +97,22 @@ int main() {
 		Vulkan::GraphicsContext graphicsContext(std::move(context), graphicsContextInfo);
 
 		Vulkan::GraphicsEngineInitInfo graphicsEngineInfo = {
-			.commandPoolInfos = {
+			.commandPoolsInfos = {
 				{vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient, graphicsContext.getContext().getQueueFamilyIndices()[0]}
 			},
-			.commandBufferInfos = {
+			.commandBuffersInfos = {
 				{0, vk::CommandBufferLevel::ePrimary, 1}
+			},
+			.semaphoresInfos = {
+				2,
+				2
+			},
+			.fencesInfos = {
+				2,
+				vk::FenceCreateFlagBits::eSignaled
 			}
 		};
+
 		Vulkan::GraphicsEngine graphicsEngine(std::move(graphicsContext), graphicsEngineInfo);
 	} catch(std::exception const& e) {
 		std::cout << e.what() << '\n';
