@@ -2,7 +2,7 @@
 #include <limits>
 
 namespace Vulkan {
-	GraphicsEngine::GraphicsEngine(GraphicsContext&& context, GraphicsEngineInitInfo const& initInfo) : graphicsContext(std::move(context)), FRAMES_IN_FLIGHT_COUNT(initInfo.framesInFlightCount) {
+	GraphicsEngine::GraphicsEngine(GraphicsContext&& context, GraphicsEngineInitInfo const& initInfo) : graphicsContext(std::move(context)), frameInFlight(0), FRAMES_IN_FLIGHT_COUNT(initInfo.framesInFlightCount) {
 		initCommandPool(initInfo.commandPoolsInfos);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initCommandBuffers(initInfo.commandBuffersInfos);
@@ -12,7 +12,7 @@ namespace Vulkan {
 		initFences(initInfo.framesInFlightCount);
 	}
 
-	GraphicsEngine::GraphicsEngine(GraphicsEngine&& moveFrom) : graphicsContext(std::move(moveFrom.graphicsContext)), commandPools(std::move(moveFrom.commandPools)), commandBuffers(std::move(moveFrom.commandBuffers)), readyToRender(std::move(moveFrom.readyToRender)), renderingFinished(std::move(moveFrom.renderingFinished)), commandBufferFinished(std::move(moveFrom.commandBufferFinished)), FRAMES_IN_FLIGHT_COUNT(moveFrom.FRAMES_IN_FLIGHT_COUNT) {
+	GraphicsEngine::GraphicsEngine(GraphicsEngine&& moveFrom) : graphicsContext(std::move(moveFrom.graphicsContext)), commandPools(std::move(moveFrom.commandPools)), commandBuffers(std::move(moveFrom.commandBuffers)), readyToRender(std::move(moveFrom.readyToRender)), renderingFinished(std::move(moveFrom.renderingFinished)), commandBufferFinished(std::move(moveFrom.commandBufferFinished)), frameInFlight(moveFrom.frameInFlight), FRAMES_IN_FLIGHT_COUNT(moveFrom.FRAMES_IN_FLIGHT_COUNT) {
 
 	}
 
@@ -79,7 +79,7 @@ namespace Vulkan {
 		graphicsContext.context.device.resetFences(*commandBufferFinished[frameInFlight]);
 
 		std::pair<vk::Result, uint32_t> imageIndexPair = graphicsContext.swapchain.acquireNextImage(UINT64_MAX, readyToRender[frameInFlight], nullptr);
-		commandBuffers[0].clear();
+		commandBuffers[0].reset();
 		recordCommandBuffer(commandBuffers[0], graphicsContext.swapchain.getImages()[imageIndexPair.second], graphicsContext.scImageViews[imageIndexPair.second]);
 
 		vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -156,7 +156,12 @@ namespace Vulkan {
 			{},
 			0,
 			0,
-			vk::ImageSubresourceRange{}
+			vk::ImageSubresourceRange {
+				   .aspectMask = vk::ImageAspectFlagBits::eColor,
+				   .baseMipLevel = 0,
+				   .levelCount = 1,
+				   .baseArrayLayer = 0,
+				   .layerCount = 1 }
 		);
 		
 		buffer.end();
