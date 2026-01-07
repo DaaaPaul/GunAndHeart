@@ -23,32 +23,31 @@ namespace Vulkan {
 			commandPoolInfo.flags = std::get<0>(info);
 			commandPoolInfo.queueFamilyIndex = std::get<1>(info);
 
-			commandPools.emplace_back(graphicsContext.context.device, commandPoolInfo);
+			commandPools.push_back(vk::raii::CommandPool(graphicsContext.context.device, commandPoolInfo));
 		};
 
 		std::cout << "Created " << commandPools.size() << " command pools\n";
 	}
 
-	void GraphicsEngine::initCommandBuffers(std::vector<std::tuple<uint32_t, vk::CommandBufferLevel>> const& bufInfos) {
-		vk::CommandBufferAllocateInfo commandBuffersInfo{};
+	void GraphicsEngine::initCommandBuffers(std::tuple<uint32_t, vk::CommandBufferLevel, uint32_t> const& bufInfos) {
+		vk::CommandBufferAllocateInfo commandBuffersInfo = {
+			.commandPool = commandPools[std::get<0>(bufInfos)],
+			.level = std::get<1>(bufInfos),
+			.commandBufferCount = std::get<2>(bufInfos)
+		};
 
-		for (std::tuple<uint32_t, vk::CommandBufferLevel> const& info : bufInfos) {
-			commandBuffersInfo.commandPool = commandPools[std::get<0>(info)];
-			commandBuffersInfo.level = std::get<1>(info);
-			commandBuffersInfo.commandBufferCount = 1;
-
-			commandBuffers.emplace_back(graphicsContext.context.device, commandBuffersInfo);
-		}
-		std::cout << "Created " << commandBuffers.size() << " command buffers\n";
+		commandBuffers = vk::raii::CommandBuffers(graphicsContext.context.device, commandBuffersInfo);
+		
+		std::cout << "Created " << std::get<2>(bufInfos) << " command buffers\n";
 	}
 
 	void GraphicsEngine::initSemaphores(uint32_t const& count) {
 		for (int i = 0; i < count; i++) {
-			readyToRender.emplace_back(graphicsContext.context.device, vk::SemaphoreCreateInfo{});
+			readyToRender.push_back(vk::raii::Semaphore(graphicsContext.context.device, vk::SemaphoreCreateInfo{}));
 		}
 
 		for (int i = 0; i < count; i++) {
-			renderingFinished.emplace_back(graphicsContext.context.device, vk::SemaphoreCreateInfo{});
+			renderingFinished.push_back(vk::raii::Semaphore(graphicsContext.context.device, vk::SemaphoreCreateInfo{}));
 		}
 
 		std::cout << "Created " << readyToRender.size() << " semaphores in the 2 sets\n";
@@ -56,7 +55,7 @@ namespace Vulkan {
 
 	void GraphicsEngine::initFences(uint32_t const& count) {
 		for (int i = 0; i < count; i++) {
-			commandBufferFinished.emplace_back(graphicsContext.context.device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled });
+			commandBufferFinished.push_back(vk::raii::Fence(graphicsContext.context.device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled }));
 		}
 
 		std::cout << "Created " << commandBufferFinished.size() << " fences\n";

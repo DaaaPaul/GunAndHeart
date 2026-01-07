@@ -10,7 +10,7 @@
 namespace Vulkan {
 	struct GraphicsEngineInitInfo {
 		std::vector<std::tuple<vk::CommandPoolCreateFlags, uint32_t>> commandPoolsInfos;
-		std::vector<std::tuple<uint32_t, vk::CommandBufferLevel>> commandBuffersInfos;
+		std::tuple<uint32_t, vk::CommandBufferLevel, uint32_t> commandBuffersInfos;
 		uint32_t framesInFlightCount;
 	};
 
@@ -27,7 +27,7 @@ namespace Vulkan {
 		const uint32_t FRAMES_IN_FLIGHT_COUNT;
 
 		void initCommandPool(std::vector<std::tuple<vk::CommandPoolCreateFlags, uint32_t>> const& poolInfos);
-		void initCommandBuffers(std::vector<std::tuple<uint32_t, vk::CommandBufferLevel>> const& bufInfos);
+		void initCommandBuffers(std::tuple<uint32_t, vk::CommandBufferLevel, uint32_t> const& bufInfos);
 		void initSemaphores(uint32_t const& count);
 		void initFences(uint32_t const& count);
 

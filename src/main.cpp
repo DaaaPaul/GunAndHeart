@@ -101,7 +101,7 @@ int main() {
 				{vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient, graphicsContext.getContext().getQueueFamilyIndices()[0]}
 			},
 			.commandBuffersInfos = {
-				{0, vk::CommandBufferLevel::ePrimary}
+				0, vk::CommandBufferLevel::ePrimary, 1
 			},
 			.framesInFlightCount = 2
 		};
