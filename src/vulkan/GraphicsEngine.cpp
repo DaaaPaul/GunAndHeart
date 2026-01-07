@@ -79,8 +79,8 @@ namespace Vulkan {
 		graphicsContext.context.device.resetFences(*commandBufferFinished[frameInFlight]);
 
 		std::pair<vk::Result, uint32_t> imageIndexPair = graphicsContext.swapchain.acquireNextImage(UINT64_MAX, readyToRender[frameInFlight], nullptr);
-		commandBuffers[0].reset();
-		recordCommandBuffer(commandBuffers[0], graphicsContext.swapchain.getImages()[imageIndexPair.second], graphicsContext.scImageViews[imageIndexPair.second]);
+		commandBuffers[frameInFlight].reset();
+		recordCommandBuffer(commandBuffers[frameInFlight], graphicsContext.swapchain.getImages()[imageIndexPair.second], graphicsContext.scImageViews[imageIndexPair.second]);
 
 		vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		vk::SubmitInfo submitInfo = {
@@ -88,11 +88,11 @@ namespace Vulkan {
 			.pWaitSemaphores = &*readyToRender[frameInFlight],
 			.pWaitDstStageMask = &waitStage,
 			.commandBufferCount = 1,
-			.pCommandBuffers = &*commandBuffers[0],
+			.pCommandBuffers = &*commandBuffers[frameInFlight],
 			.signalSemaphoreCount = 1,
 			.pSignalSemaphores = &*renderingFinished[frameInFlight]
 		};
-		graphicsContext.context.queues[0][0].submit(submitInfo, commandBufferFinished[frameInFlight]);
+		graphicsContext.context.queues[0][0].submit(submitInfo, *commandBufferFinished[frameInFlight]);
 
 		vk::PresentInfoKHR presentInfo = {
 			.waitSemaphoreCount = 1,

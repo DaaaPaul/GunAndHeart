@@ -10,7 +10,7 @@ int main() {
 		vk::PhysicalDeviceVulkan13Features,
 		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> contextInfo = {
 			.windowWidth = 800,
-			.windowHeight = 800,
+			.windowHeight = 600,
 			.appName = "GunAndHeart",
 			.apiVersion = vk::ApiVersion13,
 			.validationLayers = {"VK_LAYER_KHRONOS_validation"},
@@ -101,7 +101,7 @@ int main() {
 				{vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient, graphicsContext.getContext().getQueueFamilyIndices()[0]}
 			},
 			.commandBuffersInfos = {
-				0, vk::CommandBufferLevel::ePrimary, 1
+				0, vk::CommandBufferLevel::ePrimary, 2
 			},
 			.framesInFlightCount = 2
 		};
