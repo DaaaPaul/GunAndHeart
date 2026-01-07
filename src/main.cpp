@@ -101,19 +101,13 @@ int main() {
 				{vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient, graphicsContext.getContext().getQueueFamilyIndices()[0]}
 			},
 			.commandBuffersInfos = {
-				{0, vk::CommandBufferLevel::ePrimary, 1}
+				{0, vk::CommandBufferLevel::ePrimary}
 			},
-			.semaphoresInfos = {
-				2,
-				2
-			},
-			.fencesInfos = {
-				2,
-				vk::FenceCreateFlagBits::eSignaled
-			}
+			.framesInFlightCount = 2
 		};
 
 		Vulkan::GraphicsEngine graphicsEngine(std::move(graphicsContext), graphicsEngineInfo);
+		graphicsEngine.runLoop();
 	} catch(std::exception const& e) {
 		std::cout << e.what() << '\n';
 	}
