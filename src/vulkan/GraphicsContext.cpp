@@ -2,14 +2,16 @@
 #include <fstream>
 
 namespace Vulkan {
-	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, savedScConfigInfo{initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform } {
+	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, savedScConfigInfo{ initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform }, verticiesBuffer{ nullptr } {
 		initSwapchainAndImageViews(initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initGraphicsPipeline(initInfo.gpShaderStageInfos, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
+		initGraphicsPipeline(initInfo.gpShaderStageInfos, initInfo.gpVertexInputInfo, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
+		initVerticiesBuffer(initInfo.verticiesBufferInfo);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
-	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)) {
+	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)), verticiesBuffer(std::move(moveFrom.verticiesBuffer)) {
 	
 	}
 
@@ -77,14 +79,19 @@ namespace Vulkan {
 		std::cout << "Created " << scImageViews.size() << " image views for the swapchain\n";
 	}
 
-	void GraphicsContext::initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& shaderStageInfos, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>, std::tuple<bool, vk::LogicOp, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo) {
+	void GraphicsContext::initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& shaderStageInfos, std::tuple<vk::VertexInputBindingDescription, std::vector<vk::VertexInputAttributeDescription>> const& vInfo, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>, std::tuple<bool, vk::LogicOp, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo) {
 		std::vector<std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*>> shaderStageInfosConverted{};
 		for(int i = 0; i < shaderStageInfos.size(); i++) {
 			shaderStageInfosConverted.push_back(std::make_tuple(std::get<0>(shaderStageInfos[i]), getShaderModule(std::get<1>(shaderStageInfos[i])), std::get<2>(shaderStageInfos[i])));
 		}
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderCreateInfo = getConfigurableShaderStageInfos(shaderStageInfosConverted);
 
-		vk::PipelineVertexInputStateCreateInfo vertexInputInfo; // HARD CODED NANA
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo = {
+			.vertexBindingDescriptionCount = 1,
+			.pVertexBindingDescriptions = &std::get<0>(vInfo),
+			.vertexAttributeDescriptionCount = static_cast<uint32_t>(std::get<1>(vInfo).size()),
+			.pVertexAttributeDescriptions = std::get<1>(vInfo).data()
+		};
 
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {
 			.topology = std::get<0>(inAssemInfo),
@@ -241,6 +248,17 @@ namespace Vulkan {
 		return configurableShaderStageInfos;
 	}
 
+	void GraphicsContext::initVerticiesBuffer(std::tuple<uint32_t, vk::BufferUsageFlags, vk::SharingMode> const& vbInfo) {
+		vk::BufferCreateInfo bufferInfo = {
+			.size = std::get<0>(vbInfo),
+			.usage = std::get<1>(vbInfo),
+			.sharingMode = std::get<2>(vbInfo)
+		};
+
+		verticiesBuffer = vk::raii::Buffer(context.device, bufferInfo);
+
+		std::cout << "Created verticies buffer info with size " << bufferInfo.size << '\n';
+	}
 
 	vk::raii::ShaderModule GraphicsContext::getShaderModule(std::string const& sprivPath) {
 		std::vector<char> sprivShader = fileBytes(sprivPath);

@@ -2,6 +2,7 @@
 #include "vulkan/VulkanContext.h"
 #include "vulkan/GraphicsContext.h"
 #include "vulkan/GraphicsEngine.h"
+#include "general/Vertex.h"
 
 int main() {
 	try {
@@ -36,6 +37,12 @@ int main() {
 		};
 		Vulkan::VulkanContext context(contextInfo);
 
+		std::vector<General::Vertex> verticies = {
+			General::Vertex{ .colour = glm::vec3(1.0f, 0.0f, 0.0f), .position = glm::vec2(-0.5f, 0.0f) },
+			General::Vertex{.colour = glm::vec3(0.0f, 1.0f, 0.0f), .position = glm::vec2(0.5f, 0.5f) },
+			General::Vertex{.colour = glm::vec3(0.0f, 0.0f, 1.0f), .position = glm::vec2(0.5f, -0.5f) }
+		};
+
 		Vulkan::GraphicsContextInitInfo graphicsContextInfo = {
 			.scFormat = vk::SurfaceFormatKHR(vk::Format::eR8G8B8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear),
 			.scImageCount = 2,
@@ -49,6 +56,10 @@ int main() {
 			.gpShaderStageInfos = {
 				{vk::ShaderStageFlagBits::eVertex, "shaders/shader.spv", "vertexShader"},
 				{vk::ShaderStageFlagBits::eFragment, "shaders/shader.spv", "fragmentShader"}
+			},
+			.gpVertexInputInfo = {
+				General::Vertex::getVertexInputBindingDescription(),
+				General::Vertex::getVertexInputAttributeDescription()
 			},
 			.gpInputAssemblyInfo = {
 				vk::PrimitiveTopology::eTriangleList,
@@ -92,6 +103,9 @@ int main() {
 			.dynamicStates = {
 				vk::DynamicState::eViewport,
 				vk::DynamicState::eScissor
+			},
+			.verticiesBufferInfo = {
+				
 			}
 		};
 		Vulkan::GraphicsContext graphicsContext(std::move(context), graphicsContextInfo);
