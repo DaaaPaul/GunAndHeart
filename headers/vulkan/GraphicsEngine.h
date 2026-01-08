@@ -31,9 +31,9 @@ namespace Vulkan {
 		void initSemaphores(uint32_t const& count);
 		void initFences(uint32_t const& count);
 
-		void draw();
+		void renderAndPresentImage();
 		void recordCommandBuffer(vk::raii::CommandBuffer const& buffer, vk::Image const& image, vk::ImageView const& imageView);
-		void transitionImageLayout(vk::raii::CommandBuffer const& buffer, vk::Image const& image, vk::ImageLayout const& old, vk::ImageLayout const& newX, vk::PipelineStageFlags2 const& srcStage, vk::AccessFlags2 const& srcAccess, vk::PipelineStageFlags2 const& dstStage, vk::AccessFlags2 const& dstAccess, uint32_t const& srcQfIndex, uint32_t const& dstQfIndex, vk::ImageSubresourceRange const& range);
+		void transitionImageLayout(vk::raii::CommandBuffer const& buffer, vk::Image const& image, vk::ImageLayout const& old, vk::ImageLayout const& newX, vk::PipelineStageFlags2 const& srcStage, vk::AccessFlags2 const& srcAccess, uint32_t const& srcQfIndex, vk::PipelineStageFlags2 const& dstStage, vk::AccessFlags2 const& dstAccess, uint32_t const& dstQfIndex, vk::ImageSubresourceRange const& range);
 	public:
 		void runLoop();
 

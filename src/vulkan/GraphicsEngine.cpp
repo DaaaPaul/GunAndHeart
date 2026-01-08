@@ -62,19 +62,30 @@ namespace Vulkan {
 	}
 
 	void GraphicsEngine::runLoop() {
+		uint32_t nextSecondMark = 1;
+		uint32_t framesInSecond = 0;
+
 		while (!glfwWindowShouldClose(graphicsContext.context.window)) {
 			glfwPollEvents();
 			if (glfwGetKey(graphicsContext.context.window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 				glfwSetWindowShouldClose(graphicsContext.context.window, true);
 			}
-			draw();
+			renderAndPresentImage();
+
+			if (glfwGetTime() <= nextSecondMark) {
+				++framesInSecond;
+			} else {
+				std::cout << "FPS:" << framesInSecond << '\n';
+				++nextSecondMark;
+				framesInSecond = 0;
+			}
 		}
 
 		graphicsContext.context.device.waitIdle();
 	}
 
 	// KIND OF HARD CODED NANA
-	void GraphicsEngine::draw() {
+	void GraphicsEngine::renderAndPresentImage() {
 		while (graphicsContext.context.device.waitForFences(*commandBufferFinished[frameInFlight], true, UINT64_MAX) == vk::Result::eTimeout);
 		graphicsContext.context.device.resetFences(*commandBufferFinished[frameInFlight]);
 
@@ -115,9 +126,9 @@ namespace Vulkan {
 			vk::ImageLayout::eColorAttachmentOptimal,
 			vk::PipelineStageFlagBits2::eTopOfPipe,
 			{},
+			0,
 			vk::PipelineStageFlagBits2::eColorAttachmentOutput,
 			vk::AccessFlagBits2::eColorAttachmentWrite,
-			0,
 			0,
 			vk::ImageSubresourceRange {
 				   .aspectMask = vk::ImageAspectFlagBits::eColor,
@@ -152,9 +163,9 @@ namespace Vulkan {
 			vk::ImageLayout::ePresentSrcKHR,
 			vk::PipelineStageFlagBits2::eColorAttachmentOutput,
 			vk::AccessFlagBits2::eColorAttachmentWrite,
+			0,
 			vk::PipelineStageFlagBits2::eBottomOfPipe,
 			{},
-			0,
 			0,
 			vk::ImageSubresourceRange {
 				   .aspectMask = vk::ImageAspectFlagBits::eColor,
@@ -168,7 +179,7 @@ namespace Vulkan {
 	}
 
 	// KIND OF HARD CODED NANA
-	void GraphicsEngine::transitionImageLayout(vk::raii::CommandBuffer const& buffer, vk::Image const& image, vk::ImageLayout const& old, vk::ImageLayout const& newX, vk::PipelineStageFlags2 const& srcStage, vk::AccessFlags2 const& srcAccess, vk::PipelineStageFlags2 const& dstStage, vk::AccessFlags2 const& dstAccess, uint32_t const& srcQfIndex, uint32_t const& dstQfIndex, vk::ImageSubresourceRange const& range) {
+	void GraphicsEngine::transitionImageLayout(vk::raii::CommandBuffer const& buffer, vk::Image const& image, vk::ImageLayout const& old, vk::ImageLayout const& newX, vk::PipelineStageFlags2 const& srcStage, vk::AccessFlags2 const& srcAccess, uint32_t const& srcQfIndex, vk::PipelineStageFlags2 const& dstStage, vk::AccessFlags2 const& dstAccess, uint32_t const& dstQfIndex, vk::ImageSubresourceRange const& range) {
 		vk::ImageMemoryBarrier2 imageTransitionBarrier = {
 			.srcStageMask = srcStage,
 			.srcAccessMask = srcAccess,
