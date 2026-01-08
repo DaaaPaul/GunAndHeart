@@ -2,7 +2,7 @@
 #include <limits>
 
 namespace Vulkan {
-	GraphicsEngine::GraphicsEngine(GraphicsContext&& context, GraphicsEngineInitInfo const& initInfo) : graphicsContext(std::move(context)), frameInFlight(0), FRAMES_IN_FLIGHT_COUNT(initInfo.framesInFlightCount) {
+	GraphicsEngine::GraphicsEngine(GraphicsContext&& context, GraphicsEngineInitInfo const& initInfo) : graphicsContext(std::move(context)), frameInFlight(0), FRAMES_IN_FLIGHT_COUNT(initInfo.framesInFlightCount), windowResized(false) {
 		initCommandPool(initInfo.commandPoolsInfos);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initCommandBuffers(initInfo.commandBuffersInfos);
@@ -10,10 +10,39 @@ namespace Vulkan {
 		initSemaphores(initInfo.framesInFlightCount);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initFences(initInfo.framesInFlightCount);
+
+		glfwSetWindowUserPointer(graphicsContext.context.window, this);
+		glfwSetFramebufferSizeCallback(graphicsContext.context.window, framebufferResizeCallback);
 	}
 
-	GraphicsEngine::GraphicsEngine(GraphicsEngine&& moveFrom) : graphicsContext(std::move(moveFrom.graphicsContext)), commandPools(std::move(moveFrom.commandPools)), commandBuffers(std::move(moveFrom.commandBuffers)), readyToRender(std::move(moveFrom.readyToRender)), renderingFinished(std::move(moveFrom.renderingFinished)), commandBufferFinished(std::move(moveFrom.commandBufferFinished)), frameInFlight(moveFrom.frameInFlight), FRAMES_IN_FLIGHT_COUNT(moveFrom.FRAMES_IN_FLIGHT_COUNT) {
+	GraphicsEngine::GraphicsEngine(GraphicsEngine&& moveFrom) : graphicsContext(std::move(moveFrom.graphicsContext)), commandPools(std::move(moveFrom.commandPools)), commandBuffers(std::move(moveFrom.commandBuffers)), readyToRender(std::move(moveFrom.readyToRender)), renderingFinished(std::move(moveFrom.renderingFinished)), commandBufferFinished(std::move(moveFrom.commandBufferFinished)), frameInFlight(moveFrom.frameInFlight), FRAMES_IN_FLIGHT_COUNT(moveFrom.FRAMES_IN_FLIGHT_COUNT), windowResized(moveFrom.windowResized) {
 
+	}
+
+	void GraphicsEngine::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+		GraphicsEngine* thisEngine = reinterpret_cast<GraphicsEngine*>(glfwGetWindowUserPointer(window));
+		thisEngine->windowResized = true;
+	}
+
+	void GraphicsEngine::windowResizedAlert() {
+		int width = 0, height = 0;
+		glfwGetFramebufferSize(graphicsContext.context.window, &width, &height);
+		while(width == 0 || height == 0) {
+			glfwWaitEvents();
+			glfwGetFramebufferSize(graphicsContext.context.window, &width, &height);
+		}
+
+		graphicsContext.context.device.waitIdle();
+		graphicsContext.recreateSwapchain();
+		recreateSemaphores();
+
+		windowResized = false;
+	}
+
+	void GraphicsEngine::recreateSemaphores() {
+		readyToRender.clear();
+		renderingFinished.clear();
+		initSemaphores(FRAMES_IN_FLIGHT_COUNT);
 	}
 
 	void GraphicsEngine::initCommandPool(std::vector<std::tuple<vk::CommandPoolCreateFlags, uint32_t>> const& poolInfos) {
@@ -87,9 +116,15 @@ namespace Vulkan {
 	// KIND OF HARD CODED NANA
 	void GraphicsEngine::renderAndPresentImage() {
 		while (graphicsContext.context.device.waitForFences(*commandBufferFinished[frameInFlight], true, UINT64_MAX) == vk::Result::eTimeout);
-		graphicsContext.context.device.resetFences(*commandBufferFinished[frameInFlight]);
 
 		std::pair<vk::Result, uint32_t> imageIndexPair = graphicsContext.swapchain.acquireNextImage(UINT64_MAX, readyToRender[frameInFlight], nullptr);
+		if (windowResized || (imageIndexPair.first == vk::Result::eErrorOutOfDateKHR)) {
+			windowResizedAlert();
+			return;
+		}
+
+		graphicsContext.context.device.resetFences(*commandBufferFinished[frameInFlight]);
+		
 		commandBuffers[frameInFlight].reset();
 		recordCommandBuffer(commandBuffers[frameInFlight], graphicsContext.swapchain.getImages()[imageIndexPair.second], graphicsContext.scImageViews[imageIndexPair.second]);
 
@@ -112,7 +147,11 @@ namespace Vulkan {
 			.pSwapchains = &*graphicsContext.swapchain,
 			.pImageIndices = &imageIndexPair.second
 		};
-		graphicsContext.context.queues[0][0].presentKHR(presentInfo);
+		
+		if (windowResized || (graphicsContext.context.queues[0][0].presentKHR(presentInfo) == vk::Result::eErrorOutOfDateKHR)) {
+			windowResizedAlert();
+			return;
+		}
 
 		frameInFlight = (frameInFlight + 1) % FRAMES_IN_FLIGHT_COUNT;
 	}

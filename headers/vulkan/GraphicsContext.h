@@ -11,8 +11,8 @@ namespace Vulkan {
 		vk::SurfaceFormatKHR scFormat;
 		uint32_t scImageCount;
 		vk::PresentModeKHR scPresentMode;
-		vk::ImageUsageFlagBits scImageUsage;
-		vk::ImageAspectFlagBits scImageViewAspect;
+		vk::ImageUsageFlags scImageUsage;
+		vk::ImageAspectFlags scImageViewAspect;
 		vk::SharingMode scImageSharingMode;
 		uint32_t scQueueFamilyAccessorCount;
 		uint32_t* scQueueFamilyAccessorIndiceList;
@@ -38,7 +38,10 @@ namespace Vulkan {
 		std::vector<vk::raii::ImageView> scImageViews;
 		vk::raii::Pipeline graphicsPipeline;
 
-		void initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlagBits const& imageUsage, vk::ImageAspectFlagBits const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform);
+		std::tuple<vk::SurfaceFormatKHR, uint32_t, vk::PresentModeKHR, vk::ImageUsageFlags, vk::ImageAspectFlags, vk::SharingMode, uint32_t, uint32_t*, vk::SurfaceTransformFlagBitsKHR> savedScConfigInfo;
+		void recreateSwapchain();
+
+		void initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlags const& imageUsage, vk::ImageAspectFlags const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform);
 		void initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& shaderStageInfos, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>, std::tuple<bool, vk::LogicOp, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo);
 
 		vk::Extent2D getSurfaceExtent();
