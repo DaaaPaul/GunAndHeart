@@ -30,7 +30,7 @@ namespace Vulkan {
 		std::vector<vk::DynamicState> dynamicStates;
 		// LAYOUT INFO MISSING NANA
 
-		std::tuple<uint32_t, vk::BufferUsageFlags, vk::SharingMode> verticiesBufferInfo;
+		std::tuple<uint32_t, vk::SharingMode> verticiesBufferInfo;
 	};
 
 	class GraphicsContext {
@@ -41,13 +41,14 @@ namespace Vulkan {
 		vk::raii::Pipeline graphicsPipeline;
 
 		vk::raii::Buffer verticiesBuffer;
+		vk::raii::DeviceMemory verticiesBufferMemory;
 
 		std::tuple<vk::SurfaceFormatKHR, uint32_t, vk::PresentModeKHR, vk::ImageUsageFlags, vk::ImageAspectFlags, vk::SharingMode, uint32_t, uint32_t*, vk::SurfaceTransformFlagBitsKHR> savedScConfigInfo;
 		void recreateSwapchain();
 
 		void initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlags const& imageUsage, vk::ImageAspectFlags const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform);
 		void initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& shaderStageInfos, std::tuple<vk::VertexInputBindingDescription, std::vector<vk::VertexInputAttributeDescription>> const& vInfo, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>, std::tuple<bool, vk::LogicOp, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo);
-		void initVerticiesBuffer(std::tuple<uint32_t, vk::BufferUsageFlags, vk::SharingMode> const& vbInfo);
+		void initVerticiesBuffer(std::tuple<uint32_t, vk::SharingMode> const& vbInfo);
 
 		vk::Extent2D getSurfaceExtent();
 		vk::SurfaceFormatKHR getScFormat(vk::SurfaceFormatKHR const& desiredFormat);
@@ -58,6 +59,7 @@ namespace Vulkan {
 		vk::raii::ShaderModule getShaderModule(std::string const& sprivPath);
 		std::vector<char> fileBytes(std::string const& path);
 
+		uint32_t getSuitableMemoryTypeIndex(uint32_t filter, vk::MemoryPropertyFlags const& requiredProperties);
 	public:
 		friend class GraphicsEngine;
 

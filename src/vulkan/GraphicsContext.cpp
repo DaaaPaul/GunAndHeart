@@ -2,7 +2,7 @@
 #include <fstream>
 
 namespace Vulkan {
-	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, savedScConfigInfo{ initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform }, verticiesBuffer{ nullptr } {
+	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, savedScConfigInfo{ initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform }, verticiesBuffer{ nullptr }, verticiesBufferMemory{ nullptr } {
 		initSwapchainAndImageViews(initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initGraphicsPipeline(initInfo.gpShaderStageInfos, initInfo.gpVertexInputInfo, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
@@ -11,7 +11,7 @@ namespace Vulkan {
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
-	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)), verticiesBuffer(std::move(moveFrom.verticiesBuffer)) {
+	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)), verticiesBuffer(std::move(moveFrom.verticiesBuffer)), verticiesBufferMemory(std::move(moveFrom.verticiesBufferMemory)) {
 	
 	}
 
@@ -248,16 +248,41 @@ namespace Vulkan {
 		return configurableShaderStageInfos;
 	}
 
-	void GraphicsContext::initVerticiesBuffer(std::tuple<uint32_t, vk::BufferUsageFlags, vk::SharingMode> const& vbInfo) {
+	void GraphicsContext::initVerticiesBuffer(std::tuple<uint32_t, vk::SharingMode> const& vbInfo) {
 		vk::BufferCreateInfo bufferInfo = {
 			.size = std::get<0>(vbInfo),
-			.usage = std::get<1>(vbInfo),
-			.sharingMode = std::get<2>(vbInfo)
+			.usage = vk::BufferUsageFlagBits::eVertexBuffer,
+			.sharingMode = std::get<1>(vbInfo)
 		};
-
 		verticiesBuffer = vk::raii::Buffer(context.device, bufferInfo);
 
-		std::cout << "Created verticies buffer info with size " << bufferInfo.size << '\n';
+		vk::MemoryRequirements vbMemoryRequirements = verticiesBuffer.getMemoryRequirements();
+		uint32_t memoryTypeIndex = getSuitableMemoryTypeIndex(vbMemoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		if(memoryTypeIndex == 0xFFFFFFFF) {
+			throw std::runtime_error("No suitable memory type found for verticies buffer");
+		}
+		vk::MemoryAllocateInfo memAllocateInfo = {
+			.allocationSize = vbMemoryRequirements.size,
+			.memoryTypeIndex = memoryTypeIndex
+		};
+		verticiesBufferMemory = vk::raii::DeviceMemory(context.device, memAllocateInfo);
+
+		verticiesBuffer.bindMemory(verticiesBufferMemory, 0);
+
+		std::cout << "Created verticies buffer with size " << bufferInfo.size << " stored inside GPU memory with type " << memoryTypeIndex << " and size of " << memAllocateInfo.allocationSize << " and offset 0 (divisible by " << vbMemoryRequirements.alignment << ")\n";
+	}
+
+	uint32_t GraphicsContext::getSuitableMemoryTypeIndex(uint32_t filter, vk::MemoryPropertyFlags const& requiredProperties) {
+		vk::PhysicalDeviceMemoryProperties pdMemoryProperties = context.physicalDevice.getMemoryProperties();
+		uint32_t selectedMemoryTypeIndex = 0xFFFFFFFF;
+
+		for(int i = 0; i < pdMemoryProperties.memoryTypeCount; i++) {
+			if ((filter & (1 << i)) && ((pdMemoryProperties.memoryTypes[i].propertyFlags & requiredProperties) == requiredProperties)) {
+				selectedMemoryTypeIndex = i;
+			}
+		}
+
+		return selectedMemoryTypeIndex;
 	}
 
 	vk::raii::ShaderModule GraphicsContext::getShaderModule(std::string const& sprivPath) {
