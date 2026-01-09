@@ -157,10 +157,10 @@ namespace Vulkan {
 	}
 
 	// KIND OF HARD CODED NANA
-	void GraphicsEngine::recordCommandBuffer(vk::raii::CommandBuffer const& buffer, vk::Image const& image, vk::ImageView const& imageView) {
-		buffer.begin({});
+	void GraphicsEngine::recordCommandBuffer(vk::raii::CommandBuffer const& cmdBuffer, vk::Image const& image, vk::ImageView const& imageView) {
+		cmdBuffer.begin({});
 
-		transitionImageLayout(buffer, image,
+		transitionImageLayout(cmdBuffer, image,
 			vk::ImageLayout::eUndefined,
 			vk::ImageLayout::eColorAttachmentOptimal,
 			vk::PipelineStageFlagBits2::eTopOfPipe,
@@ -190,14 +190,16 @@ namespace Vulkan {
 			.colorAttachmentCount = 1,
 			.pColorAttachments = &attachmentInfo 
 		};
-		buffer.beginRendering(renderingInfo);
-		buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsContext.graphicsPipeline);
-		buffer.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(graphicsContext.getSurfaceExtent().width), static_cast<float>(graphicsContext.getSurfaceExtent().height), 0.0f, 1.0f));
-		buffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), graphicsContext.getSurfaceExtent()));
-		buffer.draw(3, 1, 0, 0);
-		buffer.endRendering();
+		cmdBuffer.beginRendering(renderingInfo);
+		cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsContext.graphicsPipeline);
+		cmdBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(graphicsContext.getSurfaceExtent().width), static_cast<float>(graphicsContext.getSurfaceExtent().height), 0.0f, 1.0f));
+		cmdBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), graphicsContext.getSurfaceExtent()));
+		
+		cmdBuffer.bindVertexBuffers(0, *graphicsContext.verticiesBuffer, { 0 });
+		cmdBuffer.draw(graphicsContext.verticiesCount, 1, 0, 0);
+		cmdBuffer.endRendering();
 
-		transitionImageLayout(buffer, image,
+		transitionImageLayout(cmdBuffer, image,
 			vk::ImageLayout::eColorAttachmentOptimal,
 			vk::ImageLayout::ePresentSrcKHR,
 			vk::PipelineStageFlagBits2::eColorAttachmentOutput,
@@ -214,7 +216,7 @@ namespace Vulkan {
 				   .layerCount = 1 }
 		);
 		
-		buffer.end();
+		cmdBuffer.end();
 	}
 
 	// KIND OF HARD CODED NANA

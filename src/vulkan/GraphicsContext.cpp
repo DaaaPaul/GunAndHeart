@@ -2,7 +2,7 @@
 #include <fstream>
 
 namespace Vulkan {
-	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, savedScConfigInfo{ initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform }, verticiesBuffer{ nullptr }, verticiesBufferMemory{ nullptr } {
+	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, savedScConfigInfo{ initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform }, verticiesBuffer{ nullptr }, verticiesBufferMemory{ nullptr }, verticiesCount{} {
 		initSwapchainAndImageViews(initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initGraphicsPipeline(initInfo.gpShaderStageInfos, initInfo.gpVertexInputInfo, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
@@ -11,7 +11,7 @@ namespace Vulkan {
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
-	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)), verticiesBuffer(std::move(moveFrom.verticiesBuffer)), verticiesBufferMemory(std::move(moveFrom.verticiesBufferMemory)) {
+	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)), verticiesBuffer(std::move(moveFrom.verticiesBuffer)), verticiesBufferMemory(std::move(moveFrom.verticiesBufferMemory)), verticiesCount(std::move(moveFrom.verticiesCount)) {
 	
 	}
 
@@ -248,7 +248,9 @@ namespace Vulkan {
 		return configurableShaderStageInfos;
 	}
 
-	void GraphicsContext::initVerticiesBuffer(std::tuple<uint32_t, vk::SharingMode> const& vbInfo) {
+	void GraphicsContext::initVerticiesBuffer(std::tuple<uint32_t, vk::SharingMode, std::vector<General::Vertex>> const& vbInfo) {
+		verticiesCount = std::get<2>(vbInfo).size();
+		
 		vk::BufferCreateInfo bufferInfo = {
 			.size = std::get<0>(vbInfo),
 			.usage = vk::BufferUsageFlagBits::eVertexBuffer,
@@ -269,7 +271,14 @@ namespace Vulkan {
 
 		verticiesBuffer.bindMemory(verticiesBufferMemory, 0);
 
+		void* bufferAddress = verticiesBufferMemory.mapMemory(0, bufferInfo.size);
+		memcpy(bufferAddress, std::get<2>(vbInfo).data(), bufferInfo.size);
+		verticiesBufferMemory.unmapMemory();
+
 		std::cout << "Created verticies buffer with size " << bufferInfo.size << " stored inside GPU memory with type " << memoryTypeIndex << " and size of " << memAllocateInfo.allocationSize << " and offset 0 (divisible by " << vbMemoryRequirements.alignment << ")\n";
+		std::cout << "total memory heaps: " << context.physicalDevice.getMemoryProperties().memoryHeapCount << '\n';
+		std::cout << "total memory types: " << context.physicalDevice.getMemoryProperties().memoryTypeCount << '\n';
+		std::cout << "memory heap of chosen type: " << context.physicalDevice.getMemoryProperties().memoryTypes[4].heapIndex << '\n';
 	}
 
 	uint32_t GraphicsContext::getSuitableMemoryTypeIndex(uint32_t filter, vk::MemoryPropertyFlags const& requiredProperties) {
