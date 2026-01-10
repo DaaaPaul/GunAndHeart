@@ -2,6 +2,7 @@
 
 #include "vulkan/VulkanContext.h"
 #include "general/Vertex.h"
+#include "general/VertexTransformations.h"
 #include <tuple>
 #include <string>
 
@@ -19,6 +20,9 @@ namespace Vulkan {
 		uint32_t* scQueueFamilyAccessorIndiceList;
 		vk::SurfaceTransformFlagBitsKHR scPreTransform;
 
+		std::vector<vk::DescriptorSetLayoutBinding> descriptorSetLayoutBindings;
+		std::tuple<uint32_t, uint32_t, vk::SharingMode> uniformBufferInfo;
+
 		std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& gpShaderStageInfos;
 		std::tuple<vk::VertexInputBindingDescription, std::vector<vk::VertexInputAttributeDescription>> gpVertexInputInfo;
 		std::tuple<vk::PrimitiveTopology, bool> gpInputAssemblyInfo;
@@ -29,7 +33,6 @@ namespace Vulkan {
 			std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>,
 			std::tuple<bool, vk::LogicOp, std::array<float, 4>>> gpColourBlendingInfo;
 		std::vector<vk::DynamicState> dynamicStates;
-		// LAYOUT INFO MISSING NANA
 
 		std::tuple<vk::SharingMode, std::vector<General::Vertex>> verticiesBufferInfo;
 		std::vector<uint32_t> indexBufferData;
@@ -49,10 +52,18 @@ namespace Vulkan {
 		uint32_t verticiesCount;
 		uint32_t indicesCount;
 
+		vk::raii::DescriptorSetLayout descriptorSetLayout;
+		// KIND OF HARD CODED NANA
+		std::vector<vk::raii::Buffer> uniformBuffers;
+		std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
+		std::vector<void*> uniformBuffersAddresses;
+
 		std::tuple<vk::SurfaceFormatKHR, uint32_t, vk::PresentModeKHR, vk::ImageUsageFlags, vk::ImageAspectFlags, vk::SharingMode, uint32_t, uint32_t*, vk::SurfaceTransformFlagBitsKHR> savedScConfigInfo;
 		void recreateSwapchain();
 
 		void initSwapchainAndImageViews(vk::SurfaceFormatKHR const& desiredFormat, uint32_t const& desiredImageCount, vk::PresentModeKHR const& desiredPresentMode, vk::ImageUsageFlags const& imageUsage, vk::ImageAspectFlags const& imageViewAspect, vk::SharingMode const& sharingMode, uint32_t const& queueFamilyAccessorCount, uint32_t* queueFamilyAccessorIndiceList, vk::SurfaceTransformFlagBitsKHR const& preTransform);
+		void initDescriptorSetLayout(std::vector<vk::DescriptorSetLayoutBinding> const& bindings);
+		void initUniformBuffers(std::tuple<uint32_t, uint32_t, vk::SharingMode> const& uboInfo);
 		void initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& shaderStageInfos, std::tuple<vk::VertexInputBindingDescription, std::vector<vk::VertexInputAttributeDescription>> const& vInfo, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>, std::tuple<bool, vk::LogicOp, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo);
 		void initVertexBuffer(std::tuple<vk::SharingMode, std::vector<General::Vertex>> const& vbInfo);
 		void initIndexBuffer(std::vector<uint32_t> const& indexBufferData);

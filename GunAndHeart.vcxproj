@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="headers\general\VertexTransformations.h" />
     <ClInclude Include="headers\general\Vertex.h" />
     <ClInclude Include="headers\vulkan\GraphicsEngine.h" />
     <ClInclude Include="headers\vulkan\VulkanContext.h" />
@@ -20,6 +21,7 @@
     <ClCompile Include="src\general\Vertex.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\vulkan\GraphicsEngine.cpp" />
+    <ClCompile Include="src\general\VertexTransformations.cpp" />
     <ClCompile Include="src\vulkan\VulkanContext.cpp" />
     <ClCompile Include="src\vulkan\GraphicsContext.cpp" />
   </ItemGroup>

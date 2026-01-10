@@ -3,6 +3,7 @@
 #include "vulkan/GraphicsContext.h"
 #include "vulkan/GraphicsEngine.h"
 #include "general/Vertex.h"
+#include "general/VertexTransformations.h"
 
 int main() {
 	try {
@@ -54,6 +55,10 @@ int main() {
 			.scQueueFamilyAccessorCount = 1,
 			.scQueueFamilyAccessorIndiceList = context.getQueueFamilyIndices().data(),
 			.scPreTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity,
+			
+			.descriptorSetLayoutBindings = { General::VertexTransformations::getDescriptorSetLayoutBinding(0, 1) },
+			.uniformBufferInfo = { 2, sizeof(General::VertexTransformations), vk::SharingMode::eExclusive },
+			
 			.gpShaderStageInfos = {
 				{vk::ShaderStageFlagBits::eVertex, "shaders/shader.spv", "vertexShader"},
 				{vk::ShaderStageFlagBits::eFragment, "shaders/shader.spv", "fragmentShader"}
