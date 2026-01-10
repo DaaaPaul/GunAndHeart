@@ -105,7 +105,6 @@ int main() {
 				vk::DynamicState::eScissor
 			},
 			.verticiesBufferInfo = {
-				sizeof(verticies[0]) * verticies.size(),
 				vk::SharingMode::eExclusive,
 				verticies
 			}

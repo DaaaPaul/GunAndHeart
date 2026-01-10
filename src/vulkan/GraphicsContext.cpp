@@ -7,7 +7,7 @@ namespace Vulkan {
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initGraphicsPipeline(initInfo.gpShaderStageInfos, initInfo.gpVertexInputInfo, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initVerticiesBuffer(initInfo.verticiesBufferInfo);
+		initBuffers(initInfo.verticiesBufferInfo);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
@@ -175,7 +175,7 @@ namespace Vulkan {
 		vk::SurfaceCapabilitiesKHR surfaceCapabilities = context.physicalDevice.getSurfaceCapabilitiesKHR(context.surface);
 		vk::Extent2D selectedExtent{};
 
-		if(surfaceCapabilities.currentExtent.width == 0xFFFFFFFF && surfaceCapabilities.currentExtent.height) {
+		if(surfaceCapabilities.currentExtent.width == 0xFFFFFFFF) {
 			int width = 0;
 			int height = 0;
 
@@ -248,37 +248,66 @@ namespace Vulkan {
 		return configurableShaderStageInfos;
 	}
 
-	void GraphicsContext::initVerticiesBuffer(std::tuple<uint32_t, vk::SharingMode, std::vector<General::Vertex>> const& vbInfo) {
-		verticiesCount = std::get<2>(vbInfo).size();
+	void GraphicsContext::initBuffers(std::tuple<vk::SharingMode, std::vector<General::Vertex>> const& vbInfo) {
+		verticiesCount = std::get<1>(vbInfo).size();
+		uint32_t bufferSize = verticiesCount * sizeof(std::get<1>(vbInfo)[0]);
 		
-		vk::BufferCreateInfo bufferInfo = {
-			.size = std::get<0>(vbInfo),
-			.usage = vk::BufferUsageFlagBits::eVertexBuffer,
-			.sharingMode = std::get<1>(vbInfo)
-		};
-		verticiesBuffer = vk::raii::Buffer(context.device, bufferInfo);
+		vk::raii::Buffer stagingBuffer = nullptr;
+		vk::raii::DeviceMemory stagingBufferMemory = nullptr;
 
-		vk::MemoryRequirements vbMemoryRequirements = verticiesBuffer.getMemoryRequirements();
-		uint32_t memoryTypeIndex = getSuitableMemoryTypeIndex(vbMemoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		createBufferAndMemory(stagingBuffer, stagingBufferMemory, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, bufferSize, vk::BufferUsageFlagBits::eTransferSrc, std::get<0>(vbInfo));
+		void* stagingBufferAddress = stagingBufferMemory.mapMemory(0, bufferSize);
+		memcpy(stagingBufferAddress, std::get<1>(vbInfo).data(), bufferSize);
+		stagingBufferMemory.unmapMemory();
+
+		createBufferAndMemory(verticiesBuffer, verticiesBufferMemory, vk::MemoryPropertyFlagBits::eDeviceLocal, bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, std::get<0>(vbInfo));
+		copyBuffer(stagingBuffer, verticiesBuffer, 0, 0, 0, bufferSize);
+
+		std::cout << "Created verticies buffer with size " << bufferSize << '\n';
+	}
+
+	void GraphicsContext::createBufferAndMemory(vk::raii::Buffer& buffer, vk::raii::DeviceMemory& memory, vk::MemoryPropertyFlags const& properties, uint32_t const& size, vk::BufferUsageFlags const& usage, vk::SharingMode const& sharingMode) {
+		vk::BufferCreateInfo info = {
+			.size = size,
+			.usage = usage,
+			.sharingMode = sharingMode
+		};
+		buffer = vk::raii::Buffer(context.device, info);
+
+		vk::MemoryRequirements vbMemoryRequirements = buffer.getMemoryRequirements();
+		uint32_t memoryTypeIndex = getSuitableMemoryTypeIndex(vbMemoryRequirements.memoryTypeBits, properties);
 		if(memoryTypeIndex == 0xFFFFFFFF) {
-			throw std::runtime_error("No suitable memory type found for verticies buffer");
+			throw std::runtime_error("No suitable memory type found for buffer");
 		}
-		vk::MemoryAllocateInfo memAllocateInfo = {
+		vk::MemoryAllocateInfo allocateInfo = {
 			.allocationSize = vbMemoryRequirements.size,
 			.memoryTypeIndex = memoryTypeIndex
 		};
-		verticiesBufferMemory = vk::raii::DeviceMemory(context.device, memAllocateInfo);
+		memory = vk::raii::DeviceMemory(context.device, allocateInfo);
 
-		verticiesBuffer.bindMemory(verticiesBufferMemory, 0);
+		buffer.bindMemory(memory, 0);
+	}
 
-		void* bufferAddress = verticiesBufferMemory.mapMemory(0, bufferInfo.size);
-		memcpy(bufferAddress, std::get<2>(vbInfo).data(), bufferInfo.size);
-		verticiesBufferMemory.unmapMemory();
+	void GraphicsContext::copyBuffer(vk::raii::Buffer& src, vk::raii::Buffer& dst, uint32_t const& qfIndex, uint32_t const& srcOff, uint32_t const& dstOff, uint32_t const& size) {
+		vk::CommandPoolCreateInfo poolInfo = {
+			.flags = vk::CommandPoolCreateFlagBits::eTransient,
+			.queueFamilyIndex = qfIndex
+		};
+		vk::raii::CommandPool tempPool = vk::raii::CommandPool(context.device, poolInfo);
 
-		std::cout << "Created verticies buffer with size " << bufferInfo.size << " stored inside GPU memory with type " << memoryTypeIndex << " and size of " << memAllocateInfo.allocationSize << " and offset 0 (divisible by " << vbMemoryRequirements.alignment << ")\n";
-		std::cout << "total memory heaps: " << context.physicalDevice.getMemoryProperties().memoryHeapCount << '\n';
-		std::cout << "total memory types: " << context.physicalDevice.getMemoryProperties().memoryTypeCount << '\n';
-		std::cout << "memory heap of chosen type: " << context.physicalDevice.getMemoryProperties().memoryTypes[4].heapIndex << '\n';
+		vk::CommandBufferAllocateInfo cmdBufInfo = {
+			.commandPool = tempPool,
+			.level = vk::CommandBufferLevel::ePrimary,
+			.commandBufferCount = 1
+		};
+		vk::raii::CommandBuffer tempCmdBuf = std::move(vk::raii::CommandBuffers(context.device, cmdBufInfo)[0]);
+
+		tempCmdBuf.begin(vk::CommandBufferBeginInfo{ .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+		tempCmdBuf.copyBuffer(src, dst, vk::BufferCopy{ .srcOffset = srcOff, .dstOffset = dstOff, .size = size});
+		tempCmdBuf.end();
+
+		context.queues[qfIndex][0].submit(vk::SubmitInfo{ .commandBufferCount = 1, .pCommandBuffers = &*tempCmdBuf }, nullptr);
+		context.device.waitIdle();
 	}
 
 	uint32_t GraphicsContext::getSuitableMemoryTypeIndex(uint32_t filter, vk::MemoryPropertyFlags const& requiredProperties) {
