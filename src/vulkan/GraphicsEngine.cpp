@@ -196,7 +196,8 @@ namespace Vulkan {
 		cmdBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), graphicsContext.getSurfaceExtent()));
 		
 		cmdBuffer.bindVertexBuffers(0, *graphicsContext.verticiesBuffer, { 0 });
-		cmdBuffer.draw(graphicsContext.verticiesCount, 1, 0, 0);
+		cmdBuffer.bindIndexBuffer(graphicsContext.indicesBuffer, 0, vk::IndexType::eUint32);
+		cmdBuffer.drawIndexed(graphicsContext.indicesCount, 1, 0, 0, 0);
 		cmdBuffer.endRendering();
 
 		transitionImageLayout(cmdBuffer, image,

@@ -2,16 +2,18 @@
 #include <fstream>
 
 namespace Vulkan {
-	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, savedScConfigInfo{ initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform }, verticiesBuffer{ nullptr }, verticiesBufferMemory{ nullptr }, verticiesCount{} {
+	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, savedScConfigInfo{ initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform }, verticiesBuffer{ nullptr }, verticiesBufferMemory{ nullptr }, indicesBuffer{ nullptr }, indicesBufferMemory{ nullptr }, verticiesCount{}, indicesCount{} {
 		initSwapchainAndImageViews(initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initGraphicsPipeline(initInfo.gpShaderStageInfos, initInfo.gpVertexInputInfo, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
-		initBuffers(initInfo.verticiesBufferInfo);
+		initVertexBuffer(initInfo.verticiesBufferInfo);
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
+		initIndexBuffer(initInfo.indexBufferData);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
-	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)), verticiesBuffer(std::move(moveFrom.verticiesBuffer)), verticiesBufferMemory(std::move(moveFrom.verticiesBufferMemory)), verticiesCount(std::move(moveFrom.verticiesCount)) {
+	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)), verticiesBuffer(std::move(moveFrom.verticiesBuffer)), verticiesBufferMemory(std::move(moveFrom.verticiesBufferMemory)), indicesBuffer(std::move(moveFrom.indicesBuffer)), indicesBufferMemory(std::move(moveFrom.indicesBufferMemory)), verticiesCount(std::move(moveFrom.verticiesCount)), indicesCount(std::move(moveFrom.indicesCount)) {
 	
 	}
 
@@ -248,7 +250,7 @@ namespace Vulkan {
 		return configurableShaderStageInfos;
 	}
 
-	void GraphicsContext::initBuffers(std::tuple<vk::SharingMode, std::vector<General::Vertex>> const& vbInfo) {
+	void GraphicsContext::initVertexBuffer(std::tuple<vk::SharingMode, std::vector<General::Vertex>> const& vbInfo) {
 		verticiesCount = std::get<1>(vbInfo).size();
 		uint32_t bufferSize = verticiesCount * sizeof(std::get<1>(vbInfo)[0]);
 		
@@ -262,6 +264,24 @@ namespace Vulkan {
 
 		createBufferAndMemory(verticiesBuffer, verticiesBufferMemory, vk::MemoryPropertyFlagBits::eDeviceLocal, bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, std::get<0>(vbInfo));
 		copyBuffer(stagingBuffer, verticiesBuffer, 0, 0, 0, bufferSize);
+
+		std::cout << "Created verticies buffer with size " << bufferSize << '\n';
+	}
+
+	void GraphicsContext::initIndexBuffer(std::vector<uint32_t> const& indexBufferData) {
+		indicesCount = indexBufferData.size();
+		uint32_t bufferSize = indicesCount * sizeof(indexBufferData[0]);
+
+		vk::raii::Buffer stagingBuffer = nullptr;
+		vk::raii::DeviceMemory stagingBufferMemory = nullptr;
+
+		createBufferAndMemory(stagingBuffer, stagingBufferMemory, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::SharingMode::eExclusive);
+		void* stagingBufferAddress = stagingBufferMemory.mapMemory(0, bufferSize);
+		memcpy(stagingBufferAddress, indexBufferData.data(), bufferSize);
+		stagingBufferMemory.unmapMemory();
+
+		createBufferAndMemory(indicesBuffer, indicesBufferMemory, vk::MemoryPropertyFlagBits::eDeviceLocal, bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::SharingMode::eExclusive);
+		copyBuffer(stagingBuffer, indicesBuffer, 0, 0, 0, bufferSize);
 
 		std::cout << "Created verticies buffer with size " << bufferSize << '\n';
 	}
