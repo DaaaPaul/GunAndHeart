@@ -1,5 +1,8 @@
 #include "vulkan/GraphicsEngine.h"
 #include <limits>
+#include <chrono>
+#include "general/VertexTransformations.h"
+#include "glm/gtc/matrix_transform.hpp"
 
 namespace Vulkan {
 	GraphicsEngine::GraphicsEngine(GraphicsContext&& context, GraphicsEngineInitInfo const& initInfo) : graphicsContext(std::move(context)), frameInFlight(0), FRAMES_IN_FLIGHT_COUNT(initInfo.framesInFlightCount), windowResized(false) {
@@ -138,6 +141,7 @@ namespace Vulkan {
 			.signalSemaphoreCount = 1,
 			.pSignalSemaphores = &*renderingFinished[frameInFlight]
 		};
+		updateUniformBuffer(frameInFlight);
 		graphicsContext.context.queues[0][0].submit(submitInfo, *commandBufferFinished[frameInFlight]);
 
 		vk::PresentInfoKHR presentInfo = {
@@ -154,6 +158,21 @@ namespace Vulkan {
 		}
 
 		frameInFlight = (frameInFlight + 1) % FRAMES_IN_FLIGHT_COUNT;
+	}
+
+	void GraphicsEngine::updateUniformBuffer(uint32_t const& index) {
+		static auto loadTime = std::chrono::high_resolution_clock::now();
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float timeSinceLoad = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - loadTime).count();
+
+		General::VertexTransformations transformation = {
+			.model = glm::rotate(glm::mat4(1.0f), timeSinceLoad * glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
+			.view = glm::lookAt(glm::vec3(0.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
+			.projection = glm::perspective(glm::radians(45.0f), static_cast<float>(graphicsContext.getSurfaceExtent().width) / static_cast<float>(graphicsContext.getSurfaceExtent().height), 0.1f, 10.0f)
+		};
+		transformation.projection[1][1] *= -1.0f;
+
+		memcpy(graphicsContext.uniformBuffersAddresses[index], &transformation, sizeof(General::VertexTransformations));
 	}
 
 	// KIND OF HARD CODED NANA
@@ -197,6 +216,7 @@ namespace Vulkan {
 		
 		cmdBuffer.bindVertexBuffers(0, *graphicsContext.verticiesBuffer, { 0 });
 		cmdBuffer.bindIndexBuffer(graphicsContext.indicesBuffer, 0, vk::IndexType::eUint32);
+		cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, graphicsContext.pipelineLayout, 0, *graphicsContext.descriptorSets[frameInFlight], nullptr);
 		cmdBuffer.drawIndexed(graphicsContext.indicesCount, 1, 0, 0, 0);
 		cmdBuffer.endRendering();
 

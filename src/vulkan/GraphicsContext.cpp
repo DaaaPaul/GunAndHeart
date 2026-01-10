@@ -2,12 +2,16 @@
 #include <fstream>
 
 namespace Vulkan {
-	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, verticiesBuffer{ nullptr }, verticiesBufferMemory{ nullptr }, indicesBuffer{ nullptr }, indicesBufferMemory{ nullptr }, verticiesCount{}, indicesCount{}, descriptorSetLayout{ nullptr }, uniformBuffers{}, uniformBuffersMemory{}, uniformBuffersAddresses{}, savedScConfigInfo{ initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform } {
+	GraphicsContext::GraphicsContext(VulkanContext&& context, GraphicsContextInitInfo const& initInfo) : context(std::move(context)), swapchain{ nullptr }, scImageViews{}, graphicsPipeline{ nullptr }, verticiesBuffer{ nullptr }, verticiesBufferMemory{ nullptr }, indicesBuffer{ nullptr }, indicesBufferMemory{ nullptr }, verticiesCount{}, indicesCount{}, descriptorSetLayout{ nullptr }, uniformBuffers{}, uniformBuffersMemory{}, uniformBuffersAddresses{}, descriptorSetPool{ nullptr }, descriptorSets{}, pipelineLayout{ nullptr }, savedScConfigInfo { initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform } {
 		initSwapchainAndImageViews(initInfo.scFormat, initInfo.scImageCount, initInfo.scPresentMode, initInfo.scImageUsage, initInfo.scImageViewAspect, initInfo.scImageSharingMode, initInfo.scQueueFamilyAccessorCount, initInfo.scQueueFamilyAccessorIndiceList, initInfo.scPreTransform);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initDescriptorSetLayout(initInfo.descriptorSetLayoutBindings);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initUniformBuffers(initInfo.uniformBufferInfo);
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
+		createDescriptorPool();
+		std::cout << "-------------------------------------------------------------------------------------------------------\n";
+		createDescriptorSets();
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 		initGraphicsPipeline(initInfo.gpShaderStageInfos, initInfo.gpVertexInputInfo, initInfo.gpInputAssemblyInfo, initInfo.gpViewportStateInfo, initInfo.gpRasterizationInfo, initInfo.gpColourBlendingInfo, initInfo.dynamicStates);
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
@@ -17,8 +21,8 @@ namespace Vulkan {
 		std::cout << "-------------------------------------------------------------------------------------------------------\n";
 	}
 
-	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), verticiesBuffer(std::move(moveFrom.verticiesBuffer)), verticiesBufferMemory(std::move(moveFrom.verticiesBufferMemory)), indicesBuffer(std::move(moveFrom.indicesBuffer)), indicesBufferMemory(std::move(moveFrom.indicesBufferMemory)), verticiesCount(std::move(moveFrom.verticiesCount)), indicesCount(std::move(moveFrom.indicesCount)), descriptorSetLayout(std::move(moveFrom.descriptorSetLayout)), uniformBuffers(std::move(moveFrom.uniformBuffers)), uniformBuffersMemory(std::move(moveFrom.uniformBuffersMemory)), uniformBuffersAddresses(std::move(moveFrom.uniformBuffersAddresses)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)) {
-	
+	GraphicsContext::GraphicsContext(GraphicsContext&& moveFrom) : context(std::move(moveFrom.context)), swapchain(std::move(moveFrom.swapchain)), scImageViews(std::move(moveFrom.scImageViews)), graphicsPipeline(std::move(moveFrom.graphicsPipeline)), verticiesBuffer(std::move(moveFrom.verticiesBuffer)), verticiesBufferMemory(std::move(moveFrom.verticiesBufferMemory)), indicesBuffer(std::move(moveFrom.indicesBuffer)), indicesBufferMemory(std::move(moveFrom.indicesBufferMemory)), verticiesCount(std::move(moveFrom.verticiesCount)), indicesCount(std::move(moveFrom.indicesCount)), descriptorSetLayout(std::move(moveFrom.descriptorSetLayout)), uniformBuffers(std::move(moveFrom.uniformBuffers)), uniformBuffersMemory(std::move(moveFrom.uniformBuffersMemory)), uniformBuffersAddresses(std::move(moveFrom.uniformBuffersAddresses)), descriptorSetPool(std::move(moveFrom.descriptorSetPool)), descriptorSets(std::move(moveFrom.descriptorSets)), pipelineLayout(std::move(moveFrom.pipelineLayout)), savedScConfigInfo(std::move(moveFrom.savedScConfigInfo)) {
+		
 	}
 
 	VulkanContext& GraphicsContext::getContext() {
@@ -111,6 +115,58 @@ namespace Vulkan {
 		}
 	}
 
+	// HARD CODED NANA
+	void GraphicsContext::createDescriptorPool() {
+		vk::DescriptorPoolSize poolSize = {
+			.type = vk::DescriptorType::eUniformBuffer,
+			.descriptorCount = 2
+		};
+
+		vk::DescriptorPoolCreateInfo poolInfo = {
+			.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+			.maxSets = 2,
+			.poolSizeCount = 1,
+			.pPoolSizes = &poolSize
+		};
+
+		descriptorSetPool = vk::raii::DescriptorPool(context.device, poolInfo);
+		std::cout << "Created descriptor pool to allocate " << poolSize.descriptorCount << " d-sets\n";
+	}
+
+	// HARD CODED NANA
+	void GraphicsContext::createDescriptorSets() {
+		std::vector<vk::DescriptorSetLayout> layout(2, descriptorSetLayout);
+		vk::DescriptorSetAllocateInfo descriptorSetsInfo = {
+			.descriptorPool = descriptorSetPool,
+			.descriptorSetCount = static_cast<uint32_t>(layout.size()),
+			.pSetLayouts = layout.data()
+		};
+
+		descriptorSets = context.device.allocateDescriptorSets(descriptorSetsInfo);
+		std::cout << "Created " << descriptorSets.size() << " descriptor sets\n";
+
+		for(int i = 0; i < 2; i++) {
+			vk::DescriptorBufferInfo descriptorInfo = {
+				.buffer = uniformBuffers[i],
+				.offset = 0,
+				.range = sizeof(General::VertexTransformations)
+			};
+
+			vk::WriteDescriptorSet writeDescSet = {
+				.dstSet = descriptorSets[i],
+				.dstBinding = 0,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = vk::DescriptorType::eUniformBuffer,
+				.pBufferInfo = &descriptorInfo
+			};
+
+			context.device.updateDescriptorSets(writeDescSet, {});
+		}
+
+		std::cout << "Created the descriptor within the sets\n";
+	}
+
 	void GraphicsContext::initGraphicsPipeline(std::vector<std::tuple<vk::ShaderStageFlagBits, const char*, const char*>> const& shaderStageInfos, std::tuple<vk::VertexInputBindingDescription, std::vector<vk::VertexInputAttributeDescription>> const& vInfo, std::tuple<vk::PrimitiveTopology, bool> const& inAssemInfo, std::tuple<std::array<float, 6>, std::array<uint32_t, 4>> const& viewInfo, std::tuple<bool, bool, vk::PolygonMode, vk::CullModeFlagBits, vk::FrontFace, bool, float, float, float, float> const& rasInfo, std::tuple<std::vector<std::tuple<bool, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::BlendFactor, vk::BlendFactor, vk::BlendOp, vk::ColorComponentFlags>>, std::tuple<bool, vk::LogicOp, std::array<float, 4>>> const& cBlendInfo, std::vector<vk::DynamicState> const& dyInfo) {
 		std::vector<std::tuple<vk::ShaderStageFlagBits, vk::raii::ShaderModule, const char*>> shaderStageInfosConverted{};
 		for(int i = 0; i < shaderStageInfos.size(); i++) {
@@ -177,7 +233,7 @@ namespace Vulkan {
 			.pSetLayouts = &*descriptorSetLayout,
 			.pushConstantRangeCount = 0 
 		};
-		vk::raii::PipelineLayout pipelineLayout = vk::raii::PipelineLayout(context.device, pipelineLayoutInfo);
+		pipelineLayout = vk::raii::PipelineLayout(context.device, pipelineLayoutInfo);
 
 		// HARD CODED NANA
 		vk::Format tempformat = vk::Format::eR8G8B8A8Srgb;
